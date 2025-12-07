@@ -1,5 +1,7 @@
 # SADP - Hikvision Device Discovery Tool
 
+[![CI](https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml/badge.svg)](https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml)
+
 A cross-platform command-line tool for discovering and managing Hikvision devices on your network using the SADP (Search Active Devices Protocol) and ARP-based discovery methods.
 
 ## Why This Tool?
