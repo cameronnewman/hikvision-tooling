@@ -1,12 +1,21 @@
 # SADP - Hikvision Device Discovery Tool
 
-[![CI](https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml/badge.svg)](https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml)
+[![CI][ci-badge]][ci-url]
 
-A cross-platform command-line tool for discovering and managing Hikvision devices on your network using the SADP (Search Active Devices Protocol) and ARP-based discovery methods.
+[ci-badge]: https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml/badge.svg
+[ci-url]: https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml
 
-## Why This Tool?
+A cross-platform command-line tool for discovering and managing Hikvision
+devices on your network using the SADP (Search Active Devices Protocol)
+and ARP-based discovery methods.
 
-Hikvision provides an official SADP Tool (SADPTool.exe) for device discovery and configuration, but it **only runs on Windows**. You can download it from the [Hikvision SADP Tool page](https://www.hikvision.com/en/support/tools/desktop-tools/sadp-for-windows/).
+## Why This Tool
+
+Hikvision provides an official SADP Tool (SADPTool.exe) for device
+discovery and configuration, but it **only runs on Windows**. You can
+download it from the [Hikvision SADP Tool page][sadp-tool].
+
+[sadp-tool]: https://www.hikvision.com/en/support/tools/desktop-tools/sadp-for-windows/
 
 This project provides a **cross-platform alternative** that runs natively on:
 
@@ -16,12 +25,15 @@ This project provides a **cross-platform alternative** that runs natively on:
 
 ## Features
 
-- **SADP Discovery**: Discover Hikvision devices using the official SADP multicast protocol
-- **ARP Discovery**: Find devices by scanning IP ranges and checking MAC addresses
+- **SADP Discovery**: Discover Hikvision devices using the official SADP
+  multicast protocol
+- **ARP Discovery**: Find devices by scanning IP ranges and checking MAC
+  addresses
 - **Combined Scanning**: Use both methods for comprehensive network discovery
 - **Device Probing**: Check device status and information
 - **SADP Commands**: Send SADP protocol commands to devices
-- **Password Reset Code Generation**: Generate reset codes for devices with firmware < 5.3.0
+- **Password Reset Code Generation**: Generate reset codes for devices with
+  firmware < 5.3.0
 
 ## Installation
 
@@ -41,7 +53,9 @@ make install
 
 ### Pre-built Binaries
 
-Download pre-built binaries from the [Releases](https://github.com/cameronnewman/hikvision-tooling/releases) page.
+Download pre-built binaries from the [Releases][releases] page.
+
+[releases]: https://github.com/cameronnewman/hikvision-tooling/releases
 
 ## Usage
 
@@ -124,7 +138,8 @@ sadp reset --ip 192.168.1.64
 **Important Notes:**
 
 - Serial number is case-sensitive
-- Remove the model prefix from the serial number (e.g., DS-7616NI-I20123456789 → 0123456789)
+- Remove the model prefix from the serial number
+  (e.g., DS-7616NI-I20123456789 → 0123456789)
 - Date must match the device's internal clock, not today's date
 - Only works on firmware versions < 5.3.0
 
@@ -220,7 +235,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Disclaimer
 
-This tool is intended for legitimate network administration and security research purposes. Only use it on networks and devices you own or have explicit permission to test. The authors are not responsible for any misuse of this tool.
+This tool is intended for legitimate network administration and security
+research purposes. Only use it on networks and devices you own or have
+explicit permission to test. The authors are not responsible for any
+misuse of this tool.
 
 ## Contributing
 
