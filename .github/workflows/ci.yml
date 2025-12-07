@@ -51,7 +51,7 @@ jobs:
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
           format: 'template'
-          template: '@/contrib/html.tpl'
+          template: '@contrib/html.tpl'
           output: 'trivy-report.html'
 
       - name: Upload Trivy report
