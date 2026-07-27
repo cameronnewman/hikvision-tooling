@@ -1,3 +1,5 @@
+// Package sadp implements the Hikvision SADP multicast discovery protocol
+// and the command primitives layered on top of it.
 package sadp
 
 import (
@@ -12,6 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// SADP protocol constants.
 const (
 	MulticastAddr  = "239.255.255.250"
 	Port           = 37020
@@ -22,7 +25,7 @@ const (
 // Device represents a discovered Hikvision device via SADP protocol
 type Device struct {
 	XMLName           xml.Name  `xml:"ProbeMatch" json:"-"`
-	Uuid              string    `xml:"Uuid" json:"uuid"`
+	UUID              string    `xml:"Uuid" json:"uuid"`
 	Types             string    `xml:"Types" json:"types"`
 	DeviceType        string    `xml:"DeviceType" json:"deviceType"`
 	DeviceDescription string    `xml:"DeviceDescription" json:"deviceDescription"`
@@ -36,7 +39,7 @@ type Device struct {
 	IPv6MaskLen       int       `xml:"IPv6MaskLen" json:"ipv6MaskLen"`
 	DHCP              string    `xml:"DHCP" json:"dhcp"`
 	CommandPort       int       `xml:"CommandPort" json:"commandPort"`
-	HttpPort          int       `xml:"HttpPort" json:"httpPort"`
+	HTTPPort          int       `xml:"HttpPort" json:"httpPort"`
 	DSPVersion        string    `xml:"DSPVersion" json:"dspVersion"`
 	BootTime          string    `xml:"BootTime" json:"bootTime"`
 	SoftwareVersion   string    `xml:"SoftwareVersion" json:"softwareVersion"`
@@ -142,7 +145,7 @@ func (s *Scanner) discoverOnInterface(localIP net.IP, ifaceName string) {
 		s.log.Debugw("Failed to bind", "ip", localIP.String(), "error", err)
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	multicastAddr := &net.UDPAddr{IP: net.ParseIP(MulticastAddr), Port: Port}
 	probeUUID := uuid.New().String()
@@ -233,13 +236,13 @@ func (s *Scanner) ToCSV(devices []*Device) string {
 
 	for i, dev := range devices {
 		channelNum := dev.AnalogChannelNum + dev.DigitalChannelNum
-		sb.WriteString(fmt.Sprintf("%d,%s,%s,%s,%d,%d,%s,%s,%s,%s,%s,%d,%s,%s,%s\n",
+		fmt.Fprintf(&sb, "%d,%s,%s,%s,%d,%d,%s,%s,%s,%s,%s,%d,%s,%s,%s\n",
 			i+1,
 			dev.DeviceType,
 			dev.Activated,
 			dev.IPv4Address,
 			dev.CommandPort,
-			dev.HttpPort,
+			dev.HTTPPort,
 			dev.SoftwareVersion,
 			dev.IPv4Gateway,
 			dev.DeviceSN,
@@ -249,7 +252,7 @@ func (s *Scanner) ToCSV(devices []*Device) string {
 			dev.DSPVersion,
 			dev.BootTime,
 			dev.DHCP,
-		))
+		)
 	}
 
 	return sb.String()

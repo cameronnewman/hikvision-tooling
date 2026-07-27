@@ -1,6 +1,7 @@
 package sadp
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -235,7 +236,7 @@ func (s *Scanner) SendCommand(cmdName string, opts SendOptions) (string, error) 
 	if err != nil {
 		return "", fmt.Errorf("failed to connect: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	timeout := opts.Timeout
 	if timeout == 0 {
@@ -251,8 +252,9 @@ func (s *Scanner) SendCommand(cmdName string, opts SendOptions) (string, error) 
 	buf := make([]byte, MaxPacketSize)
 	n, err := conn.Read(buf)
 	if err != nil {
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			return "", fmt.Errorf("no response (timeout)")
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return "", errors.New("no response (timeout)")
 		}
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
@@ -310,7 +312,7 @@ func (s *Scanner) sendCommandBroadcastWithMAC(xmlCmd string, opts SendOptions) (
 				if err != nil {
 					return
 				}
-				defer conn.Close()
+				defer func() { _ = conn.Close() }()
 
 				multicastAddr := &net.UDPAddr{IP: net.ParseIP(MulticastAddr), Port: Port}
 				_, _ = conn.WriteToUDP([]byte(xmlCmd), multicastAddr)

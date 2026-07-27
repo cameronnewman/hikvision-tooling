@@ -1,3 +1,5 @@
+// Package crypto implements the Hikvision password-reset code algorithm
+// and the AES/XOR helpers it depends on.
 package crypto
 
 import (
@@ -21,11 +23,14 @@ func DecryptAES(data []byte, keyHex string) ([]byte, error) {
 
 	blockSize := block.BlockSize()
 
-	// Pad data to block size if necessary
+	// Pad data to block size if necessary. Copy into a new slice so we
+	// don't scribble past the caller's slice cap.
 	paddedData := data
 	if len(data)%blockSize != 0 {
 		padding := blockSize - (len(data) % blockSize)
-		paddedData = append(data, bytes.Repeat([]byte{0}, padding)...)
+		paddedData = make([]byte, 0, len(data)+padding)
+		paddedData = append(paddedData, data...)
+		paddedData = append(paddedData, bytes.Repeat([]byte{0}, padding)...)
 	}
 
 	// Decrypt using ECB mode (block by block)
@@ -58,7 +63,7 @@ func GenerateResetCode(serial, date string) string {
 	seed := serial + date
 
 	// Stage 1: Calculate magic number
-	var magic uint64 = 0
+	var magic uint64
 	for i, char := range seed {
 		pos := uint64(i + 1)
 		charVal := uint64(char)

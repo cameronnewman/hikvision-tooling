@@ -1,3 +1,4 @@
+// Package cli implements the sadp command-line interface.
 package cli
 
 import (
@@ -211,14 +212,15 @@ func DiscoverSADPCmd(args []string) error {
 	fmt.Printf("\nDiscovered %d device(s)\n", len(devices))
 
 	var output string
-	if *xmlFormat {
+	switch {
+	case *xmlFormat:
 		output, err = scanner.ToXML(devices)
 		if err != nil {
 			return fmt.Errorf("error generating XML: %w", err)
 		}
-	} else if *csvFormat {
+	case *csvFormat:
 		output = scanner.ToCSV(devices)
-	} else {
+	default:
 		printDeviceTable(devices)
 		if *outputFile != "" {
 			output, _ = scanner.ToXML(devices)

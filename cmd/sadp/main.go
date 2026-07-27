@@ -1,3 +1,4 @@
+// Command sadp is the CLI entry point for the Hikvision SADP tooling.
 package main
 
 import (

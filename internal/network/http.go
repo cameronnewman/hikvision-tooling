@@ -2,6 +2,7 @@ package network
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -56,12 +57,13 @@ func (c *HTTPClient) GetWithAuth(ipAddress, path, authToken string) (*HTTPRespon
 
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(parsedURL.Hostname(), port), c.Timeout)
 	if err != nil {
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
 			return nil, fmt.Errorf("connection timeout to %s", ipAddress)
 		}
 		return nil, fmt.Errorf("connection failed to %s: %w", ipAddress, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_ = conn.SetDeadline(time.Now().Add(c.Timeout))
 

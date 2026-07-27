@@ -62,7 +62,7 @@ func TestHTTPClientGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(tt.responseCode)
 				_, _ = w.Write([]byte(tt.responseBody))
@@ -182,7 +182,7 @@ func TestHTTPClientTimeout(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(tt.serverDelay)
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -216,7 +216,7 @@ func TestHTTPClientDifferentStatusCodes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tt.statusCode)
 			}))
 			defer server.Close()
@@ -255,7 +255,7 @@ func TestHTTPClientHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set(tt.customHeader, tt.customValue)
 				w.Header().Set("Content-Type", tt.contentType)
 				w.WriteHeader(http.StatusOK)
@@ -369,7 +369,7 @@ func TestHTTPClientWithPort(t *testing.T) {
 			// Start server on that port
 			server := &http.Server{
 				Addr: fmt.Sprintf("127.0.0.1:%d", port),
-				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					w.WriteHeader(http.StatusOK)
 					_, _ = w.Write([]byte(tt.responseBody))
 				}),
