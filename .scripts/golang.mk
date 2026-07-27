@@ -45,7 +45,7 @@ go-build: ## Build the binary for current platform
 
 ifeq ($(filter $(ENVIRONMENT),local docker),$(ENVIRONMENT))
 	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)
 else
 	@mkdir -p $(BUILD_DIR)
 	DOCKER_BUILDKIT=1 \
@@ -54,7 +54,7 @@ else
 	-w /usr/src/app \
 	--entrypoint=bash \
 	$(GOLANG_BUILD_IMAGE) \
-	-c "CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -buildvcs=false $(GOFLAGS) -ldflags '-s -w -X main.Version=$(VERSION) -X main.Commit=$(VERSION_HASH)' -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)"
+	-c "CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)"
 endif
 
 	@echo "$(shell date) - Completed 'go build': $(BUILD_DIR)/$(BINARY)"
@@ -77,7 +77,7 @@ ifeq ($(filter $(ENVIRONMENT),local docker),$(ENVIRONMENT))
 		output=$(BUILD_DIR)/$(BINARY)-$$os-$$arch; \
 		if [ "$$os" = "windows" ]; then output="$$output.exe"; fi; \
 		echo "Building $$os/$$arch..."; \
-		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch $(GO) build $(GOFLAGS) $(LDFLAGS) -o $$output $(MAIN_PATH); \
+		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch $(GO) build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $$output $(MAIN_PATH); \
 	done
 else
 	@mkdir -p $(BUILD_DIR)
@@ -93,7 +93,7 @@ else
 		output=$(BUILD_DIR)/$(BINARY)-$$os-$$arch; \
 		if [ "$$os" = "windows" ]; then output="$$output.exe"; fi; \
 		echo "Building $$os/$$arch..."; \
-		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch go build -buildvcs=false -ldflags "-s -w -X main.Version=$(VERSION) -X main.Commit=$(VERSION_HASH)" -o $$output $(MAIN_PATH); \
+		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch go build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $$output $(MAIN_PATH); \
 	done'
 endif
 
