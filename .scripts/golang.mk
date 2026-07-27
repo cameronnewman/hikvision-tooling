@@ -251,6 +251,27 @@ go-deps-verify: ## Verify dependencies
 	$(GO) mod verify
 	@echo "$(shell date) - Completed verifying dependencies"
 
+## Security targets
+
+.PHONY: go-govulncheck
+go-govulncheck: ## Run govulncheck against all packages
+	@echo "+++ $(shell date) - Running 'govulncheck'"
+
+ifeq ($(filter $(ENVIRONMENT),local docker),$(ENVIRONMENT))
+	@command -v govulncheck >/dev/null 2>&1 || $(GO) install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
+else
+	DOCKER_BUILDKIT=1 \
+	$(DOCKER) run --rm \
+	-v $(PWD):/usr/src/app \
+	-w /usr/src/app \
+	--entrypoint "/bin/bash" \
+	$(GOLANG_BUILD_IMAGE) \
+	-c "go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
+endif
+
+	@echo "$(shell date) - Completed 'govulncheck'"
+
 ## Vet target
 
 .PHONY: go-vet

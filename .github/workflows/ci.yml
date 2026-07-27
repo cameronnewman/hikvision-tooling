@@ -46,6 +46,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.36.0
         with:
@@ -53,6 +58,16 @@ jobs:
           scan-ref: '.'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Run gosec
+        uses: securego/gosec@v2.28.0
+        with:
+          args: ./...
 
   build:
     name: Build
