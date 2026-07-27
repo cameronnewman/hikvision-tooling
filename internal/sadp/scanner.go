@@ -21,37 +21,37 @@ const (
 
 // Device represents a discovered Hikvision device via SADP protocol
 type Device struct {
-	XMLName           xml.Name `xml:"ProbeMatch" json:"-"`
-	Uuid              string   `xml:"Uuid" json:"uuid"`
-	Types             string   `xml:"Types" json:"types"`
-	DeviceType        string   `xml:"DeviceType" json:"deviceType"`
-	DeviceDescription string   `xml:"DeviceDescription" json:"deviceDescription"`
-	DeviceSN          string   `xml:"DeviceSN" json:"serialNumber"`
-	MAC               string   `xml:"MAC" json:"mac"`
-	IPv4Address       string   `xml:"IPv4Address" json:"ipv4Address"`
-	IPv4SubnetMask    string   `xml:"IPv4SubnetMask" json:"ipv4SubnetMask"`
-	IPv4Gateway       string   `xml:"IPv4Gateway" json:"ipv4Gateway"`
-	IPv6Address       string   `xml:"IPv6Address" json:"ipv6Address"`
-	IPv6Gateway       string   `xml:"IPv6Gateway" json:"ipv6Gateway"`
-	IPv6MaskLen       int      `xml:"IPv6MaskLen" json:"ipv6MaskLen"`
-	DHCP              string   `xml:"DHCP" json:"dhcp"`
-	CommandPort       int      `xml:"CommandPort" json:"commandPort"`
-	HttpPort          int      `xml:"HttpPort" json:"httpPort"`
-	DSPVersion        string   `xml:"DSPVersion" json:"dspVersion"`
-	BootTime          string   `xml:"BootTime" json:"bootTime"`
-	SoftwareVersion   string   `xml:"SoftwareVersion" json:"softwareVersion"`
-	Activated         string   `xml:"Activated" json:"activated"`
-	PasswordResetMode string   `xml:"PasswordResetModeSecond" json:"passwordResetMode"`
-	SupportHCPlatform string   `xml:"SupportHCPlatform" json:"supportHCPlatform"`
-	HCPlatformEnable  string   `xml:"HCPlatformEnable" json:"hcPlatformEnable"`
-	SupportReset      string   `xml:"Support" json:"supportReset"`
-	Encoder           string   `xml:"Encoder" json:"encoder"`
-	OEMInfo           string   `xml:"OEMInfo" json:"oemInfo"`
-	AnalogChannelNum  int      `xml:"AnalogChannelNum" json:"analogChannelNum"`
-	DigitalChannelNum int      `xml:"DigitalChannelNum" json:"digitalChannelNum"`
-	SDKOverTLSPort    int      `xml:"SDKOverTLSPort" json:"sdkOverTLSPort"`
-	SDKServerStatus   string   `xml:"SDKServerStatus" json:"sdkServerStatus"`
-	AdapterIP         string   `xml:"-" json:"adapterIP"`
+	XMLName           xml.Name  `xml:"ProbeMatch" json:"-"`
+	Uuid              string    `xml:"Uuid" json:"uuid"`
+	Types             string    `xml:"Types" json:"types"`
+	DeviceType        string    `xml:"DeviceType" json:"deviceType"`
+	DeviceDescription string    `xml:"DeviceDescription" json:"deviceDescription"`
+	DeviceSN          string    `xml:"DeviceSN" json:"serialNumber"`
+	MAC               string    `xml:"MAC" json:"mac"`
+	IPv4Address       string    `xml:"IPv4Address" json:"ipv4Address"`
+	IPv4SubnetMask    string    `xml:"IPv4SubnetMask" json:"ipv4SubnetMask"`
+	IPv4Gateway       string    `xml:"IPv4Gateway" json:"ipv4Gateway"`
+	IPv6Address       string    `xml:"IPv6Address" json:"ipv6Address"`
+	IPv6Gateway       string    `xml:"IPv6Gateway" json:"ipv6Gateway"`
+	IPv6MaskLen       int       `xml:"IPv6MaskLen" json:"ipv6MaskLen"`
+	DHCP              string    `xml:"DHCP" json:"dhcp"`
+	CommandPort       int       `xml:"CommandPort" json:"commandPort"`
+	HttpPort          int       `xml:"HttpPort" json:"httpPort"`
+	DSPVersion        string    `xml:"DSPVersion" json:"dspVersion"`
+	BootTime          string    `xml:"BootTime" json:"bootTime"`
+	SoftwareVersion   string    `xml:"SoftwareVersion" json:"softwareVersion"`
+	Activated         string    `xml:"Activated" json:"activated"`
+	PasswordResetMode string    `xml:"PasswordResetModeSecond" json:"passwordResetMode"`
+	SupportHCPlatform string    `xml:"SupportHCPlatform" json:"supportHCPlatform"`
+	HCPlatformEnable  string    `xml:"HCPlatformEnable" json:"hcPlatformEnable"`
+	SupportReset      string    `xml:"Support" json:"supportReset"`
+	Encoder           string    `xml:"Encoder" json:"encoder"`
+	OEMInfo           string    `xml:"OEMInfo" json:"oemInfo"`
+	AnalogChannelNum  int       `xml:"AnalogChannelNum" json:"analogChannelNum"`
+	DigitalChannelNum int       `xml:"DigitalChannelNum" json:"digitalChannelNum"`
+	SDKOverTLSPort    int       `xml:"SDKOverTLSPort" json:"sdkOverTLSPort"`
+	SDKServerStatus   string    `xml:"SDKServerStatus" json:"sdkServerStatus"`
+	AdapterIP         string    `xml:"-" json:"adapterIP"`
 	ReceivedTime      time.Time `xml:"-" json:"receivedTime"`
 }
 

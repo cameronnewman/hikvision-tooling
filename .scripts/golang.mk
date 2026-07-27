@@ -7,7 +7,7 @@
 
 # Docker settings
 DOCKER ?= docker
-GOLANG_BUILD_IMAGE ?= docker.io/library/golang:1.21-bullseye
+GOLANG_BUILD_IMAGE ?= docker.io/library/golang:1.26-bookworm
 GOLANG_LINT_IMAGE := docker.io/golangci/golangci-lint:v1.61.0
 
 # Environment: local, docker, or CI (default: CI runs in docker)

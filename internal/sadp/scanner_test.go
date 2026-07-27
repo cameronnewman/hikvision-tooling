@@ -109,10 +109,10 @@ func TestToXML(t *testing.T) {
 	scanner := NewScanner(5*time.Second, log)
 
 	tests := []struct {
-		name           string
-		devices        []*Device
-		wantContains   []string
-		wantErr        bool
+		name         string
+		devices      []*Device
+		wantContains []string
+		wantErr      bool
 	}{
 		{
 			name: "multiple devices",
