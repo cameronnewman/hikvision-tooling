@@ -367,6 +367,53 @@ func TestSendCommandRoutingPreconditions(t *testing.T) {
 	}
 }
 
+func TestRedactXML(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "activate password redacted",
+			in:   `<Probe><MAC>AA:BB:CC:DD:EE:FF</MAC><Types>activate</Types><Password>hunter2</Password></Probe>`,
+			want: `<Probe><MAC>AA:BB:CC:DD:EE:FF</MAC><Types>activate</Types><Password>***</Password></Probe>`,
+		},
+		{
+			name: "resetpassword redacts Code and Password",
+			in:   `<Probe><Code>ABC123</Code><Password>hunter2</Password></Probe>`,
+			want: `<Probe><Code>***</Code><Password>***</Password></Probe>`,
+		},
+		{
+			name: "securitycode redacts SecurityCode",
+			in:   `<Probe><SecurityCode>XYZ789</SecurityCode><Password>hunter2</Password></Probe>`,
+			want: `<Probe><SecurityCode>***</SecurityCode><Password>***</Password></Probe>`,
+		},
+		{
+			name: "empty Code left as ***",
+			in:   `<Probe><Code></Code></Probe>`,
+			want: `<Probe><Code>***</Code></Probe>`,
+		},
+		{
+			name: "inquiry has no secrets and is untouched",
+			in:   `<Probe><Uuid>abc</Uuid><Types>inquiry</Types></Probe>`,
+			want: `<Probe><Uuid>abc</Uuid><Types>inquiry</Types></Probe>`,
+		},
+		{
+			name: "MAC and IP are not redacted",
+			in:   `<Probe><MAC>AA:BB:CC:DD:EE:FF</MAC><IPv4Address>192.168.1.64</IPv4Address></Probe>`,
+			want: `<Probe><MAC>AA:BB:CC:DD:EE:FF</MAC><IPv4Address>192.168.1.64</IPv4Address></Probe>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := redactXML(tt.in); got != tt.want {
+				t.Errorf("redactXML() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResponseMatches(t *testing.T) {
 	const sampleResponse = `<?xml version="1.0" encoding="utf-8"?>` +
 		`<ProbeMatch><Uuid>abc</Uuid><MAC>AA:BB:CC:DD:EE:FF</MAC>` +

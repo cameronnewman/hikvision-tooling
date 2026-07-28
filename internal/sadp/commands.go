@@ -4,12 +4,33 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// sensitiveXMLTags matches the elements of an SADP probe that carry a
+// credential or reset token. Their bodies must be redacted before the XML is
+// written to a log because operators routinely enable DEBUG in shared
+// terminals or CI output.
+var sensitiveXMLTags = regexp.MustCompile(`<(Password|Code|SecurityCode)>[^<]*</(Password|Code|SecurityCode)>`)
+
+// redactXML returns xml with the contents of every known secret-bearing tag
+// replaced by "***". Non-matching tags are left untouched, so the result is
+// still useful for eyeballing the wire format.
+func redactXML(xml string) string {
+	return sensitiveXMLTags.ReplaceAllStringFunc(xml, func(m string) string {
+		openEnd := strings.Index(m, ">")
+		closeStart := strings.LastIndex(m, "<")
+		if openEnd < 0 || closeStart <= openEnd {
+			return m
+		}
+		return m[:openEnd+1] + "***" + m[closeStart:]
+	})
+}
 
 // Command represents a SADP command template
 type Command struct {
@@ -246,7 +267,7 @@ func (s *Scanner) SendCommand(cmdName string, opts SendOptions) (string, error) 
 
 func (s *Scanner) sendCommandUnicast(xmlCmd string, opts SendOptions) (string, error) {
 	s.log.Debugw("Sending command (unicast)", "target", opts.TargetIP, "port", Port)
-	s.log.Debugw("XML command", "xml", xmlCmd)
+	s.log.Debugw("XML command", "xml", redactXML(xmlCmd))
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   net.ParseIP(opts.TargetIP),
@@ -288,7 +309,7 @@ func (s *Scanner) sendCommandBroadcast(xmlCmd string, opts SendOptions) (string,
 	}
 	s.log.Debugw("Sending command via multicast/broadcast",
 		"targetIP", targetIP, "targetMAC", targetMAC)
-	s.log.Debugw("XML command", "xml", xmlCmd)
+	s.log.Debugw("XML command", "xml", redactXML(xmlCmd))
 
 	interfaces, err := net.Interfaces()
 	if err != nil {
