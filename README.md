@@ -1,9 +1,18 @@
 # SADP - Hikvision Device Discovery Tool
 
-[![CI][ci-badge]][ci-url]
+[![Build][1]][2]
+[![GoDoc][3]][4]
+[![Go Report Card][5]][6]
+[![FOSSA Status][9]][10]
 
-[ci-badge]: https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml/badge.svg
-[ci-url]: https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml
+[1]: https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml/badge.svg
+[2]: https://github.com/cameronnewman/hikvision-tooling/actions/workflows/ci.yml
+[3]: https://pkg.go.dev/badge/github.com/cameronnewman/hikvision-tooling.svg
+[4]: https://pkg.go.dev/github.com/cameronnewman/hikvision-tooling
+[5]: https://goreportcard.com/badge/github.com/cameronnewman/hikvision-tooling
+[6]: https://goreportcard.com/report/github.com/cameronnewman/hikvision-tooling
+[9]: https://app.fossa.io/api/projects/git%2Bgithub.com%2Fcameronnewman%2Fhikvision-tooling.svg?type=shield
+[10]: https://app.fossa.io/projects/git%2Bgithub.com%2Fcameronnewman%2Fhikvision-tooling?ref=badge_shield
 
 A cross-platform command-line tool for discovering and managing Hikvision
 devices on your network using the SADP (Search Active Devices Protocol)
