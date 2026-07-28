@@ -7,14 +7,19 @@ import (
 	"bytes"
 	"encoding/hex"
 	"net"
-	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 )
 
 // ARPTable maps IP addresses to MAC addresses
 type ARPTable map[string]string
+
+// Swappable OS command factories. Tests reassign these to inject failure
+// paths that a real system call cannot easily reproduce.
+var (
+	arpCommand  = defaultArpCommand
+	pingCommand = defaultPingCommand
+)
 
 // HikvisionOUIs are the MAC address prefixes assigned to Hikvision
 var HikvisionOUIs = []string{
@@ -45,15 +50,8 @@ func GetARPTable() (ARPTable, error) {
 func getARPTableOS() (ARPTable, error) {
 	arpTable := make(ARPTable)
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("arp", "-an")
-	case "linux":
-		cmd = exec.Command("arp", "-n")
-	case "windows":
-		cmd = exec.Command("arp", "-a")
-	default:
+	cmd := arpCommand()
+	if cmd == nil {
 		return arpTable, nil
 	}
 
@@ -178,18 +176,11 @@ func PingHost(ip string, timeout time.Duration) bool {
 		return false
 	}
 
-	var cmd *exec.Cmd
-
-	switch runtime.GOOS {
-	case "darwin", "linux":
-		cmd = exec.Command("ping", "-c", "1", "-W", "1", ip) // #nosec G204 -- ip validated by net.ParseIP above
-	case "windows":
-		cmd = exec.Command("ping", "-n", "1", "-w", "1000", ip) // #nosec G204 -- ip validated by net.ParseIP above
-	default:
+	cmd := pingCommand(ip)
+	if cmd == nil {
 		return false
 	}
 
-	// Start the command first to avoid race condition
 	if err := cmd.Start(); err != nil {
 		return false
 	}
