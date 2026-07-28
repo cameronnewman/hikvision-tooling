@@ -4,6 +4,7 @@ package cli
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -15,6 +16,50 @@ import (
 	"github.com/cameronnewman/hikvision-tooling/internal/network"
 	"github.com/cameronnewman/hikvision-tooling/internal/sadp"
 )
+
+// sadpScanner is the subset of *sadp.Scanner used by the CLI; extracted so
+// tests can substitute an in-memory fake.
+type sadpScanner interface {
+	Discover() ([]*sadp.Device, error)
+	SendCommand(cmdName string, opts sadp.SendOptions) (string, error)
+	ToXML(devices []*sadp.Device) (string, error)
+	ToCSV(devices []*sadp.Device) string
+}
+
+// httpGetter is the subset of *network.HTTPClient used by the CLI; extracted
+// so tests can substitute an in-memory fake.
+type httpGetter interface {
+	Get(ipAddress, path string) (*network.HTTPResponse, error)
+}
+
+// Swappable indirections; production defaults wire to the real
+// implementations. Tests reassign these to exercise handlers without
+// touching real network state.
+var (
+	stdout         io.Writer = os.Stdout
+	stderr         io.Writer = os.Stderr
+	newSADPScanner           = func(t time.Duration, l *logger.Logger) sadpScanner {
+		return sadp.NewScanner(t, l)
+	}
+	newHTTPClient = func(ua string, t time.Duration) httpGetter {
+		return network.NewHTTPClient(ua, t)
+	}
+	getARPTable = network.GetARPTable
+	isHostAlive = network.IsHostAlive
+	writeFile   = os.WriteFile
+)
+
+func out(a ...any) {
+	_, _ = fmt.Fprintln(stdout, a...)
+}
+
+func outf(format string, a ...any) {
+	_, _ = fmt.Fprintf(stdout, format, a...)
+}
+
+func errf(format string, a ...any) {
+	_, _ = fmt.Fprintf(stderr, format, a...)
+}
 
 // Run executes the CLI with the given arguments
 func Run(args []string) error {
@@ -47,33 +92,33 @@ func Run(args []string) error {
 
 // PrintUsage prints the CLI usage information
 func PrintUsage() {
-	fmt.Println("SADP - Hikvision Device Discovery Tool")
-	fmt.Println("")
-	fmt.Println("Usage:")
-	fmt.Println("  sadp <command> [options]")
-	fmt.Println("")
-	fmt.Println("Commands:")
-	fmt.Println("  discover <CIDR>    Discover Hikvision devices via ARP (requires subnet)")
-	fmt.Println("  discover:sadp      Discover devices via SADP protocol (multicast)")
-	fmt.Println("  scan <CIDR>        Discover devices using both ARP and SADP")
-	fmt.Println("  probe <IP>         Check device info and status")
-	fmt.Println("  send <IP> <cmd>    Send SADP XML command to a device (multicast/broadcast by default)")
-	fmt.Println("  reset              Generate password reset code (firmware < 5.3.0)")
-	fmt.Println("")
-	fmt.Println("Environment Variables:")
-	fmt.Println("  DISCOVERY_WORKERS   Number of concurrent workers (default: 100)")
-	fmt.Println("  DISCOVERY_TIMEOUT   Per-host timeout (default: 1s)")
-	fmt.Println("  SADP_TIMEOUT        SADP protocol timeout (default: 5s)")
-	fmt.Println("  DEBUG               Enable debug output (default: false)")
-	fmt.Println("")
-	fmt.Println("Examples:")
-	fmt.Println("  sadp discover:sadp")
-	fmt.Println("  sadp discover:sadp --xml --output devices.xml")
-	fmt.Println("  sadp scan 192.168.1.0/24")
-	fmt.Println("  sadp send 192.168.1.64 inquiry")
-	fmt.Println("  sadp reset --serial ABC123 --date 20231215")
-	fmt.Println("")
-	fmt.Println("Run 'sadp <command> --help' for command options.")
+	out("SADP - Hikvision Device Discovery Tool")
+	out("")
+	out("Usage:")
+	out("  sadp <command> [options]")
+	out("")
+	out("Commands:")
+	out("  discover <CIDR>    Discover Hikvision devices via ARP (requires subnet)")
+	out("  discover:sadp      Discover devices via SADP protocol (multicast)")
+	out("  scan <CIDR>        Discover devices using both ARP and SADP")
+	out("  probe <IP>         Check device info and status")
+	out("  send <IP> <cmd>    Send SADP XML command to a device (multicast/broadcast by default)")
+	out("  reset              Generate password reset code (firmware < 5.3.0)")
+	out("")
+	out("Environment Variables:")
+	out("  DISCOVERY_WORKERS   Number of concurrent workers (default: 100)")
+	out("  DISCOVERY_TIMEOUT   Per-host timeout (default: 1s)")
+	out("  SADP_TIMEOUT        SADP protocol timeout (default: 5s)")
+	out("  DEBUG               Enable debug output (default: false)")
+	out("")
+	out("Examples:")
+	out("  sadp discover:sadp")
+	out("  sadp discover:sadp --xml --output devices.xml")
+	out("  sadp scan 192.168.1.0/24")
+	out("  sadp send 192.168.1.64 inquiry")
+	out("  sadp reset --serial ABC123 --date 20231215")
+	out("")
+	out("Run 'sadp <command> --help' for command options.")
 }
 
 // DiscoverCmd handles the discover command
@@ -90,11 +135,11 @@ func DiscoverCmd(args []string) error {
 	_ = fs.Parse(args)
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: sadp discover [options] <CIDR>")
-		fmt.Println("\nExamples:")
-		fmt.Println("  sadp discover 192.168.1.0/24")
-		fmt.Println("  sadp discover 10.0.0.0/16")
-		fmt.Println("\nOptions:")
+		out("Usage: sadp discover [options] <CIDR>")
+		out("\nExamples:")
+		out("  sadp discover 192.168.1.0/24")
+		out("  sadp discover 10.0.0.0/16")
+		out("\nOptions:")
 		fs.PrintDefaults()
 		return nil
 	}
@@ -112,10 +157,10 @@ func DiscoverCmd(args []string) error {
 
 	devices := discoverDevices(ips, *workers, *timeout, log)
 
-	fmt.Printf("\nDiscovered %d Hikvision device(s):\n", len(devices))
-	fmt.Println("---------------------------------------------------")
+	outf("\nDiscovered %d Hikvision device(s):\n", len(devices))
+	out("---------------------------------------------------")
 	for _, dev := range devices {
-		fmt.Printf("  IP: %-15s  MAC: %s\n", dev.IP, dev.MAC)
+		outf("  IP: %-15s  MAC: %s\n", dev.IP, dev.MAC)
 	}
 
 	return nil
@@ -140,7 +185,7 @@ func discoverDevices(ips []string, workers int, timeout time.Duration, log *logg
 	for i := 0; i < workers; i++ {
 		go func() {
 			for ip := range ipChan {
-				alive := network.IsHostAlive(ip, timeout)
+				alive := isHostAlive(ip, timeout)
 				resultChan <- result{ip: ip, alive: alive}
 			}
 		}()
@@ -163,7 +208,7 @@ func discoverDevices(ips []string, workers int, timeout time.Duration, log *logg
 	}
 
 	// Get ARP table
-	arpTable, err := network.GetARPTable()
+	arpTable, err := getARPTable()
 	if err != nil {
 		log.Warnw("Failed to read ARP table", "error", err)
 		return nil
@@ -197,19 +242,19 @@ func DiscoverSADPCmd(args []string) error {
 	debug := fs.Bool("debug", cfg.Debug, "Enable debug output")
 	_ = fs.Parse(args)
 
-	fmt.Println("Discovering Hikvision devices via SADP protocol...")
-	fmt.Println("Sending multicast probes to 239.255.255.250:37020")
+	out("Discovering Hikvision devices via SADP protocol...")
+	out("Sending multicast probes to 239.255.255.250:37020")
 
 	log := logger.New(*debug)
 	defer func() { _ = log.Sync() }()
 
-	scanner := sadp.NewScanner(*timeout, log)
+	scanner := newSADPScanner(*timeout, log)
 	devices, err := scanner.Discover()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("\nDiscovered %d device(s)\n", len(devices))
+	outf("\nDiscovered %d device(s)\n", len(devices))
 
 	var output string
 	switch {
@@ -228,13 +273,13 @@ func DiscoverSADPCmd(args []string) error {
 	}
 
 	if *outputFile != "" && output != "" {
-		err := os.WriteFile(*outputFile, []byte(output), 0600)
+		err := writeFile(*outputFile, []byte(output), 0600)
 		if err != nil {
 			return fmt.Errorf("error writing file: %w", err)
 		}
-		fmt.Printf("Output written to: %s\n", *outputFile)
+		outf("Output written to: %s\n", *outputFile)
 	} else if output != "" && (*xmlFormat || *csvFormat) {
-		fmt.Println(output)
+		out(output)
 	}
 
 	return nil
@@ -242,14 +287,14 @@ func DiscoverSADPCmd(args []string) error {
 
 func printDeviceTable(devices []*sadp.Device) {
 	if len(devices) == 0 {
-		fmt.Println("No devices found.")
+		out("No devices found.")
 		return
 	}
 
-	fmt.Println()
-	fmt.Printf("%-3s %-15s %-17s %-20s %-8s %-6s %-15s %s\n",
+	out()
+	outf("%-3s %-15s %-17s %-20s %-8s %-6s %-15s %s\n",
 		"#", "IPv4 Address", "MAC Address", "Device Type", "Status", "Port", "Serial Number", "Software Version")
-	fmt.Println(strings.Repeat("-", 120))
+	out(strings.Repeat("-", 120))
 
 	for i, dev := range devices {
 		status := "Inactive"
@@ -257,7 +302,7 @@ func printDeviceTable(devices []*sadp.Device) {
 			status = "Active"
 		}
 
-		fmt.Printf("%-3d %-15s %-17s %-20s %-8s %-6d %-15s %s\n",
+		outf("%-3d %-15s %-17s %-20s %-8s %-6d %-15s %s\n",
 			i+1,
 			dev.IPv4Address,
 			dev.MAC,
@@ -268,7 +313,7 @@ func printDeviceTable(devices []*sadp.Device) {
 			dev.SoftwareVersion,
 		)
 	}
-	fmt.Println()
+	out()
 }
 
 // SendCmd handles the send command
@@ -302,31 +347,31 @@ func SendCmd(args []string) error {
 	}
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: sadp send <IP> <command> [options]")
-		fmt.Println("       sadp send --list")
-		fmt.Println("")
-		fmt.Println("Commands: inquiry, inquiry_v32, exchangecode, getencryptstring,")
-		fmt.Println("          activate, update, reboot, restore, setmailbox, ezvizunbind")
-		fmt.Println("")
-		fmt.Println("Transport:")
-		fmt.Println("  By default the request is sent to the SADP multicast group")
-		fmt.Println("  (239.255.255.250:37020) and to broadcast on every IPv4 interface,")
-		fmt.Println("  and the reply is correlated back to the target MAC or IP. This is")
-		fmt.Println("  how SADPTool works and is required because Hikvision devices do")
-		fmt.Println("  not open UDP/37020 on their unicast IP.")
-		fmt.Println("")
-		fmt.Println("  Pass 0.0.0.0 as <IP> when the device's address is unknown; a MAC")
-		fmt.Println("  is then required. Use --unicast only to force the legacy direct")
-		fmt.Println("  send (rarely works, kept as an escape hatch).")
-		fmt.Println("")
-		fmt.Println("Options:")
+		out("Usage: sadp send <IP> <command> [options]")
+		out("       sadp send --list")
+		out("")
+		out("Commands: inquiry, inquiry_v32, exchangecode, getencryptstring,")
+		out("          activate, update, reboot, restore, setmailbox, ezvizunbind")
+		out("")
+		out("Transport:")
+		out("  By default the request is sent to the SADP multicast group")
+		out("  (239.255.255.250:37020) and to broadcast on every IPv4 interface,")
+		out("  and the reply is correlated back to the target MAC or IP. This is")
+		out("  how SADPTool works and is required because Hikvision devices do")
+		out("  not open UDP/37020 on their unicast IP.")
+		out("")
+		out("  Pass 0.0.0.0 as <IP> when the device's address is unknown; a MAC")
+		out("  is then required. Use --unicast only to force the legacy direct")
+		out("  send (rarely works, kept as an escape hatch).")
+		out("")
+		out("Options:")
 		fs.PrintDefaults()
-		fmt.Println("")
-		fmt.Println("Examples:")
-		fmt.Println("  sadp send 192.168.1.64 inquiry")
-		fmt.Println("  sadp send 192.168.1.64 exchangecode --mac 4C:BD:8F:61:CC:5C")
-		fmt.Println("  sadp send 0.0.0.0 exchangecode --mac 4C:BD:8F:61:CC:5C")
-		fmt.Println("  sadp send 192.168.1.64 inquiry --unicast    # legacy direct send")
+		out("")
+		out("Examples:")
+		out("  sadp send 192.168.1.64 inquiry")
+		out("  sadp send 192.168.1.64 exchangecode --mac 4C:BD:8F:61:CC:5C")
+		out("  sadp send 0.0.0.0 exchangecode --mac 4C:BD:8F:61:CC:5C")
+		out("  sadp send 192.168.1.64 inquiry --unicast    # legacy direct send")
 		return nil
 	}
 
@@ -341,7 +386,7 @@ func SendCmd(args []string) error {
 	log := logger.New(*debug)
 	defer func() { _ = log.Sync() }()
 
-	scanner := sadp.NewScanner(*timeout, log)
+	scanner := newSADPScanner(*timeout, log)
 	opts := sadp.SendOptions{
 		TargetIP:   targetIP,
 		TargetMAC:  macAddr,
@@ -357,14 +402,14 @@ func SendCmd(args []string) error {
 		Unicast:    *unicast,
 	}
 
-	fmt.Printf("Sending '%s' command to %s...\n", command, targetIP)
+	outf("Sending '%s' command to %s...\n", command, targetIP)
 	switch {
 	case *unicast:
-		fmt.Println("Using unicast mode (direct UDP to target)")
+		out("Using unicast mode (direct UDP to target)")
 	case targetIP == "0.0.0.0":
-		fmt.Printf("Using multicast/broadcast (target MAC: %s)\n", macAddr)
+		outf("Using multicast/broadcast (target MAC: %s)\n", macAddr)
 	default:
-		fmt.Println("Using multicast/broadcast; reply correlated by MAC/IP")
+		out("Using multicast/broadcast; reply correlated by MAC/IP")
 	}
 
 	response, err := scanner.SendCommand(command, opts)
@@ -372,19 +417,19 @@ func SendCmd(args []string) error {
 		return err
 	}
 
-	fmt.Println("\nResponse:")
-	fmt.Println("---")
-	fmt.Println(response)
-	fmt.Println("---")
+	out("\nResponse:")
+	out("---")
+	out(response)
+	out("---")
 
 	return nil
 }
 
 func printCommandList() {
-	fmt.Println("Available SADP Commands:")
-	fmt.Println()
-	fmt.Printf("%-20s %-12s %-12s %s\n", "Command", "Needs MAC", "Needs Pass", "Description")
-	fmt.Println(strings.Repeat("-", 80))
+	out("Available SADP Commands:")
+	out()
+	outf("%-20s %-12s %-12s %s\n", "Command", "Needs MAC", "Needs Pass", "Description")
+	out(strings.Repeat("-", 80))
 
 	for _, cmd := range sadp.ListCommands() {
 		mac := "No"
@@ -395,7 +440,7 @@ func printCommandList() {
 		if cmd.NeedsPass {
 			pass = "Yes"
 		}
-		fmt.Printf("%-20s %-12s %-12s %s\n", cmd.Name, mac, pass, cmd.Description)
+		outf("%-20s %-12s %-12s %s\n", cmd.Name, mac, pass, cmd.Description)
 	}
 }
 
@@ -443,8 +488,8 @@ func ResetCmd(args []string) error {
 	if *ip != "" {
 		fetchedSerial, fetchedDate, err := fetchDeviceInfo(cfg, *ip, *debug)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Could not auto-fetch device info: %v\n", err)
-			fmt.Println("Please provide --serial and --date manually")
+			errf("Warning: Could not auto-fetch device info: %v\n", err)
+			out("Please provide --serial and --date manually")
 		} else {
 			if *serial == "" {
 				*serial = fetchedSerial
@@ -456,23 +501,23 @@ func ResetCmd(args []string) error {
 	}
 
 	if *serial == "" || *date == "" {
-		fmt.Println("Hikvision Password Reset Code Generator")
-		fmt.Println("========================================")
-		fmt.Println("")
-		fmt.Println("Usage: sadp reset --serial <SERIAL> --date <YYYYMMDD>")
-		fmt.Println("       sadp reset --ip <DEVICE_IP>")
-		fmt.Println("")
-		fmt.Println("Options:")
+		out("Hikvision Password Reset Code Generator")
+		out("========================================")
+		out("")
+		out("Usage: sadp reset --serial <SERIAL> --date <YYYYMMDD>")
+		out("       sadp reset --ip <DEVICE_IP>")
+		out("")
+		out("Options:")
 		fs.PrintDefaults()
-		fmt.Println("")
-		fmt.Println("IMPORTANT:")
-		fmt.Println("  - Serial number is CASE-SENSITIVE")
-		fmt.Println("  - Remove the model prefix from the serial number")
-		fmt.Println("    Example: DS-7616NI-I20123456789 -> 0123456789")
-		fmt.Println("  - Date must match the device's internal clock, NOT today's date")
-		fmt.Println("  - Check the 'Start Time' or 'Boot Time' in SADP to find device date")
-		fmt.Println("")
-		fmt.Println("Note: This only works on firmware versions < 5.3.0")
+		out("")
+		out("IMPORTANT:")
+		out("  - Serial number is CASE-SENSITIVE")
+		out("  - Remove the model prefix from the serial number")
+		out("    Example: DS-7616NI-I20123456789 -> 0123456789")
+		out("  - Date must match the device's internal clock, NOT today's date")
+		out("  - Check the 'Start Time' or 'Boot Time' in SADP to find device date")
+		out("")
+		out("Note: This only works on firmware versions < 5.3.0")
 		return nil
 	}
 
@@ -482,30 +527,30 @@ func ResetCmd(args []string) error {
 
 	resetCode := crypto.GenerateResetCode(*serial, *date)
 
-	fmt.Println("Hikvision Password Reset Code Generator")
-	fmt.Println("========================================")
-	fmt.Println("")
-	fmt.Printf("Serial Number: %s\n", *serial)
-	fmt.Printf("Device Date:   %s\n", *date)
-	fmt.Printf("Seed:          %s%s\n", *serial, *date)
-	fmt.Println("")
-	fmt.Println("----------------------------------------")
-	fmt.Printf("RESET CODE:    %s\n", resetCode)
-	fmt.Println("----------------------------------------")
-	fmt.Println("")
-	fmt.Println("Instructions:")
-	fmt.Println("1. Open SADP Tool and select your device")
-	fmt.Println("2. Click 'Forgot Password' or enter the security code field")
-	fmt.Println("3. Enter the reset code above")
-	fmt.Println("4. The admin password will be reset to '12345' or '123456789abc'")
-	fmt.Println("")
-	fmt.Println("Note: This only works on firmware < 5.3.0")
+	out("Hikvision Password Reset Code Generator")
+	out("========================================")
+	out("")
+	outf("Serial Number: %s\n", *serial)
+	outf("Device Date:   %s\n", *date)
+	outf("Seed:          %s%s\n", *serial, *date)
+	out("")
+	out("----------------------------------------")
+	outf("RESET CODE:    %s\n", resetCode)
+	out("----------------------------------------")
+	out("")
+	out("Instructions:")
+	out("1. Open SADP Tool and select your device")
+	out("2. Click 'Forgot Password' or enter the security code field")
+	out("3. Enter the reset code above")
+	out("4. The admin password will be reset to '12345' or '123456789abc'")
+	out("")
+	out("Note: This only works on firmware < 5.3.0")
 
 	return nil
 }
 
 func fetchDeviceInfo(cfg *config.Config, ipAddress string, debug bool) (serial, date string, err error) {
-	httpClient := network.NewHTTPClient(cfg.UserAgent, cfg.HTTPTimeout)
+	httpClient := newHTTPClient(cfg.UserAgent, cfg.HTTPTimeout)
 	resp, err := httpClient.Get(ipAddress, "/upnpdevicedesc.xml")
 	if err != nil {
 		return "", "", fmt.Errorf("failed to connect: %w", err)
@@ -522,8 +567,8 @@ func fetchDeviceInfo(cfg *config.Config, ipAddress string, debug bool) (serial, 
 		if len(bodyStr) < maxLen {
 			maxLen = len(bodyStr)
 		}
-		fmt.Println("Response from /upnpdevicedesc.xml:")
-		fmt.Println(bodyStr[:maxLen])
+		out("Response from /upnpdevicedesc.xml:")
+		out(bodyStr[:maxLen])
 	}
 
 	modelPattern := regexp.MustCompile(`<modelNumber>([^<]+)</modelNumber>`)
@@ -547,9 +592,9 @@ func fetchDeviceInfo(cfg *config.Config, ipAddress string, debug bool) (serial, 
 	date = time.Now().Format("20060102")
 
 	if debug {
-		fmt.Printf("Extracted model: %s\n", model)
-		fmt.Printf("Extracted serial: %s\n", serial)
-		fmt.Printf("Using date: %s (verify this matches device clock!)\n", date)
+		outf("Extracted model: %s\n", model)
+		outf("Extracted serial: %s\n", serial)
+		outf("Using date: %s (verify this matches device clock!)\n", date)
 	}
 
 	return serial, date, nil
@@ -569,12 +614,12 @@ func ScanCmd(args []string) error {
 	_ = fs.Parse(args)
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: sadp scan [options] <CIDR>")
-		fmt.Println("\nThis command discovers Hikvision devices using both ARP and SADP protocols.")
-		fmt.Println("\nExamples:")
-		fmt.Println("  sadp scan 192.168.1.0/24")
-		fmt.Println("  sadp scan --workers 50 10.0.0.0/24")
-		fmt.Println("\nOptions:")
+		out("Usage: sadp scan [options] <CIDR>")
+		out("\nThis command discovers Hikvision devices using both ARP and SADP protocols.")
+		out("\nExamples:")
+		out("  sadp scan 192.168.1.0/24")
+		out("  sadp scan --workers 50 10.0.0.0/24")
+		out("\nOptions:")
 		fs.PrintDefaults()
 		return nil
 	}
@@ -583,26 +628,26 @@ func ScanCmd(args []string) error {
 	log := logger.New(*debug)
 	defer func() { _ = log.Sync() }()
 
-	fmt.Printf("Scanning %s for Hikvision devices...\n", cidr)
+	outf("Scanning %s for Hikvision devices...\n", cidr)
 
 	// ARP Discovery
-	fmt.Println("\n[1/2] ARP Discovery...")
+	out("\n[1/2] ARP Discovery...")
 	ips, err := network.ExpandCIDR(cidr)
 	if err != nil {
 		return fmt.Errorf("invalid CIDR: %w", err)
 	}
 
 	arpDevices := discoverDevices(ips, *workers, *timeout, log)
-	fmt.Printf("      Found %d device(s) via ARP\n", len(arpDevices))
+	outf("      Found %d device(s) via ARP\n", len(arpDevices))
 
 	// SADP Discovery
-	fmt.Println("\n[2/2] SADP Discovery...")
-	scanner := sadp.NewScanner(cfg.SADPTimeout, log)
+	out("\n[2/2] SADP Discovery...")
+	scanner := newSADPScanner(cfg.SADPTimeout, log)
 	sadpDevices, err := scanner.Discover()
 	if err != nil {
 		log.Warnw("SADP discovery failed", "error", err)
 	}
-	fmt.Printf("      Found %d device(s) via SADP\n", len(sadpDevices))
+	outf("      Found %d device(s) via SADP\n", len(sadpDevices))
 
 	// Merge results (deduplicate by MAC)
 	deviceMap := make(map[string]interface{})
@@ -613,24 +658,24 @@ func ScanCmd(args []string) error {
 		deviceMap[strings.ToUpper(dev.MAC)] = dev
 	}
 
-	fmt.Println("\n===================================================")
-	fmt.Println("                   SCAN RESULTS                    ")
-	fmt.Println("===================================================")
-	fmt.Printf("Total unique devices: %d\n\n", len(deviceMap))
+	out("\n===================================================")
+	out("                   SCAN RESULTS                    ")
+	out("===================================================")
+	outf("Total unique devices: %d\n\n", len(deviceMap))
 
 	// Print ARP results
 	if len(arpDevices) > 0 {
-		fmt.Println("Devices found via ARP:")
-		fmt.Println("---------------------------------------------------")
+		out("Devices found via ARP:")
+		out("---------------------------------------------------")
 		for _, dev := range arpDevices {
-			fmt.Printf("  IP: %-15s  MAC: %s\n", dev.IP, dev.MAC)
+			outf("  IP: %-15s  MAC: %s\n", dev.IP, dev.MAC)
 		}
-		fmt.Println()
+		out()
 	}
 
 	// Print SADP results
 	if len(sadpDevices) > 0 {
-		fmt.Println("Devices found via SADP:")
+		out("Devices found via SADP:")
 		printDeviceTable(sadpDevices)
 	}
 
@@ -648,15 +693,15 @@ func ProbeCmd(args []string) error {
 	_ = fs.Parse(args)
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: sadp probe <IP_ADDRESS>")
-		fmt.Println("\nProbes a Hikvision device to check its status and information.")
+		out("Usage: sadp probe <IP_ADDRESS>")
+		out("\nProbes a Hikvision device to check its status and information.")
 		return nil
 	}
 
 	ipAddress := fs.Arg(0)
-	httpClient := network.NewHTTPClient(cfg.UserAgent, cfg.HTTPTimeout)
+	httpClient := newHTTPClient(cfg.UserAgent, cfg.HTTPTimeout)
 
-	fmt.Printf("Probing device at %s...\n\n", ipAddress)
+	outf("Probing device at %s...\n\n", ipAddress)
 
 	// Check common endpoints
 	endpoints := []struct {
@@ -668,27 +713,27 @@ func ProbeCmd(args []string) error {
 		{"/", "Web Interface"},
 	}
 
-	fmt.Println("Checking endpoints:")
-	fmt.Println("---------------------------------------------------")
+	out("Checking endpoints:")
+	out("---------------------------------------------------")
 
 	for _, ep := range endpoints {
 		resp, err := httpClient.Get(ipAddress, ep.path)
 		if err != nil {
-			fmt.Printf("  %-25s ERROR: %v\n", ep.description, err)
+			outf("  %-25s ERROR: %v\n", ep.description, err)
 			continue
 		}
-		fmt.Printf("  %-25s HTTP %d", ep.description, resp.StatusCode)
+		outf("  %-25s HTTP %d", ep.description, resp.StatusCode)
 
 		if resp.StatusCode == 200 && len(resp.Body) > 0 {
 			bodyStr := string(resp.Body)
 			if firmware := extractFirmwareVersion(bodyStr); firmware != "" {
-				fmt.Printf(" (Firmware: %s)", firmware)
+				outf(" (Firmware: %s)", firmware)
 			}
 			if model := extractModel(bodyStr); model != "" {
-				fmt.Printf(" (Model: %s)", model)
+				outf(" (Model: %s)", model)
 			}
 		}
-		fmt.Println()
+		out()
 	}
 
 	return nil
