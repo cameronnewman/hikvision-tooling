@@ -128,9 +128,21 @@ sadp send 192.168.1.64 inquiry
 # Exchange code with a specific device
 sadp send 192.168.1.64 exchangecode --mac 4C:BD:8F:61:CC:5C
 
-# Broadcast mode
+# Target unknown IP (MAC required)
 sadp send 0.0.0.0 exchangecode --mac 4C:BD:8F:61:CC:5C
+
+# Force legacy direct-dial (rarely works, see below)
+sadp send 192.168.1.64 inquiry --unicast
 ```
+
+**Transport:** `send` writes the request to the SADP multicast group
+(`239.255.255.250:37020`) and to broadcast on every IPv4 interface, then
+correlates the reply back to the target MAC (preferred) or IP. This mirrors
+the official SADPTool and is required because Hikvision devices only listen
+for SADP on multicast/broadcast — unicast to `<device-ip>:37020` is typically
+rejected (`connection refused` on Linux) or silently dropped (`no response`
+on Windows). Pass `--unicast` only if you have a device that behaves
+differently and want to force the legacy path.
 
 #### `reset` - Password Reset Code Generator
 
