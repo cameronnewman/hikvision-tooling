@@ -57,7 +57,7 @@ func PrintUsage() {
 	fmt.Println("  discover:sadp      Discover devices via SADP protocol (multicast)")
 	fmt.Println("  scan <CIDR>        Discover devices using both ARP and SADP")
 	fmt.Println("  probe <IP>         Check device info and status")
-	fmt.Println("  send <IP> <cmd>    Send SADP XML command to a device")
+	fmt.Println("  send <IP> <cmd>    Send SADP XML command to a device (multicast/broadcast by default)")
 	fmt.Println("  reset              Generate password reset code (firmware < 5.3.0)")
 	fmt.Println("")
 	fmt.Println("Environment Variables:")
@@ -291,6 +291,7 @@ func SendCmd(args []string) error {
 	timeout := fs.Duration("timeout", cfg.SADPTimeout, "Command timeout")
 	debug := fs.Bool("debug", cfg.Debug, "Enable debug output")
 	listCmds := fs.Bool("list", false, "List available commands")
+	unicast := fs.Bool("unicast", false, "Force direct UDP send to <IP>:37020 (legacy; most devices ignore unicast SADP)")
 
 	reorderedArgs := reorderArgsForFlags(args)
 	_ = fs.Parse(reorderedArgs)
@@ -307,13 +308,25 @@ func SendCmd(args []string) error {
 		fmt.Println("Commands: inquiry, inquiry_v32, exchangecode, getencryptstring,")
 		fmt.Println("          activate, update, reboot, restore, setmailbox, ezvizunbind")
 		fmt.Println("")
+		fmt.Println("Transport:")
+		fmt.Println("  By default the request is sent to the SADP multicast group")
+		fmt.Println("  (239.255.255.250:37020) and to broadcast on every IPv4 interface,")
+		fmt.Println("  and the reply is correlated back to the target MAC or IP. This is")
+		fmt.Println("  how SADPTool works and is required because Hikvision devices do")
+		fmt.Println("  not open UDP/37020 on their unicast IP.")
+		fmt.Println("")
+		fmt.Println("  Pass 0.0.0.0 as <IP> when the device's address is unknown; a MAC")
+		fmt.Println("  is then required. Use --unicast only to force the legacy direct")
+		fmt.Println("  send (rarely works, kept as an escape hatch).")
+		fmt.Println("")
 		fmt.Println("Options:")
 		fs.PrintDefaults()
 		fmt.Println("")
 		fmt.Println("Examples:")
 		fmt.Println("  sadp send 192.168.1.64 inquiry")
 		fmt.Println("  sadp send 192.168.1.64 exchangecode --mac 4C:BD:8F:61:CC:5C")
-		fmt.Println("  sadp send 0.0.0.0 exchangecode --mac 4C:BD:8F:61:CC:5C  (uses broadcast)")
+		fmt.Println("  sadp send 0.0.0.0 exchangecode --mac 4C:BD:8F:61:CC:5C")
+		fmt.Println("  sadp send 192.168.1.64 inquiry --unicast    # legacy direct send")
 		return nil
 	}
 
@@ -341,11 +354,17 @@ func SendCmd(args []string) error {
 		DHCP:       *dhcp,
 		Email:      *email,
 		Timeout:    *timeout,
+		Unicast:    *unicast,
 	}
 
 	fmt.Printf("Sending '%s' command to %s...\n", command, targetIP)
-	if targetIP == "0.0.0.0" {
-		fmt.Printf("Using broadcast mode (target MAC: %s)\n", macAddr)
+	switch {
+	case *unicast:
+		fmt.Println("Using unicast mode (direct UDP to target)")
+	case targetIP == "0.0.0.0":
+		fmt.Printf("Using multicast/broadcast (target MAC: %s)\n", macAddr)
+	default:
+		fmt.Println("Using multicast/broadcast; reply correlated by MAC/IP")
 	}
 
 	response, err := scanner.SendCommand(command, opts)
@@ -391,7 +410,7 @@ func reorderArgsForFlags(args []string) []string {
 			flags = append(flags, arg)
 			if !strings.Contains(arg, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 				flagName := strings.TrimLeft(arg, "-")
-				if flagName != "debug" && flagName != "dhcp" && flagName != "list" {
+				if flagName != "debug" && flagName != "dhcp" && flagName != "list" && flagName != "unicast" {
 					i++
 					flags = append(flags, args[i])
 				}

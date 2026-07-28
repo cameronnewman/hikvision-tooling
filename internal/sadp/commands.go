@@ -4,12 +4,33 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// sensitiveXMLTags matches the elements of an SADP probe that carry a
+// credential or reset token. Their bodies must be redacted before the XML is
+// written to a log because operators routinely enable DEBUG in shared
+// terminals or CI output.
+var sensitiveXMLTags = regexp.MustCompile(`<(Password|Code|SecurityCode)>[^<]*</(Password|Code|SecurityCode)>`)
+
+// redactXML returns xml with the contents of every known secret-bearing tag
+// replaced by "***". Non-matching tags are left untouched, so the result is
+// still useful for eyeballing the wire format.
+func redactXML(xml string) string {
+	return sensitiveXMLTags.ReplaceAllStringFunc(xml, func(m string) string {
+		openEnd := strings.Index(m, ">")
+		closeStart := strings.LastIndex(m, "<")
+		if openEnd < 0 || closeStart <= openEnd {
+			return m
+		}
+		return m[:openEnd+1] + "***" + m[closeStart:]
+	})
+}
 
 // Command represents a SADP command template
 type Command struct {
@@ -142,6 +163,11 @@ type SendOptions struct {
 	DHCP       bool
 	Email      string
 	Timeout    time.Duration
+	// Unicast forces the legacy behaviour of dialling the target IP directly on
+	// UDP/37020. Hikvision devices only listen for SADP on the multicast group
+	// 239.255.255.250:37020 and typically drop unicast to their own IP, so this
+	// is off by default; SendCommand uses multicast/broadcast unless it is set.
+	Unicast bool
 }
 
 // BuildCommandXML builds the XML for a SADP command
@@ -212,22 +238,36 @@ func (s *Scanner) BuildCommandXML(cmdName string, opts SendOptions) (string, err
 	return xmlCmd, nil
 }
 
-// SendCommand sends a SADP command to a device and returns the response
+// SendCommand sends a SADP command to a device and returns the response.
+//
+// By default the request is written to the SADP multicast group and to
+// broadcast on every non-loopback IPv4 interface, and the reply is matched
+// back to opts.TargetMAC (preferred) or opts.TargetIP. This mirrors how the
+// official SADPTool works and is required because Hikvision devices do not
+// listen for SADP on their unicast IP. Set opts.Unicast to force the legacy
+// direct-dial path.
 func (s *Scanner) SendCommand(cmdName string, opts SendOptions) (string, error) {
 	xmlCmd, err := s.BuildCommandXML(cmdName, opts)
 	if err != nil {
 		return "", err
 	}
 
-	if opts.TargetIP == "0.0.0.0" || opts.TargetIP == "" {
-		if opts.TargetMAC == "" {
-			return "", fmt.Errorf("MAC address required when target IP is 0.0.0.0")
+	if opts.Unicast {
+		if opts.TargetIP == "" || opts.TargetIP == "0.0.0.0" {
+			return "", errors.New("unicast mode requires a specific target IP")
 		}
-		return s.sendCommandBroadcastWithMAC(xmlCmd, opts)
+		return s.sendCommandUnicast(xmlCmd, opts)
 	}
 
-	s.log.Debugw("Sending command", "target", opts.TargetIP, "port", Port)
-	s.log.Debugw("XML command", "xml", xmlCmd)
+	if opts.TargetMAC == "" && (opts.TargetIP == "" || opts.TargetIP == "0.0.0.0") {
+		return "", errors.New("target MAC or IP required")
+	}
+	return s.sendCommandBroadcast(xmlCmd, opts)
+}
+
+func (s *Scanner) sendCommandUnicast(xmlCmd string, opts SendOptions) (string, error) {
+	s.log.Debugw("Sending command (unicast)", "target", opts.TargetIP, "port", Port)
+	s.log.Debugw("XML command", "xml", redactXML(xmlCmd))
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   net.ParseIP(opts.TargetIP),
@@ -240,12 +280,11 @@ func (s *Scanner) SendCommand(cmdName string, opts SendOptions) (string, error) 
 
 	timeout := opts.Timeout
 	if timeout == 0 {
-		timeout = 5 * time.Second
+		timeout = DefaultTimeout
 	}
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 
-	_, err = conn.Write([]byte(xmlCmd))
-	if err != nil {
+	if _, err := conn.Write([]byte(xmlCmd)); err != nil {
 		return "", fmt.Errorf("failed to send command: %w", err)
 	}
 
@@ -262,11 +301,15 @@ func (s *Scanner) SendCommand(cmdName string, opts SendOptions) (string, error) 
 	return string(buf[:n]), nil
 }
 
-func (s *Scanner) sendCommandBroadcastWithMAC(xmlCmd string, opts SendOptions) (string, error) {
-	s.log.Debugw("Sending command via broadcast", "targetMAC", opts.TargetMAC)
-	s.log.Debugw("XML command", "xml", xmlCmd)
-
+func (s *Scanner) sendCommandBroadcast(xmlCmd string, opts SendOptions) (string, error) {
 	targetMAC := strings.ToUpper(strings.ReplaceAll(opts.TargetMAC, "-", ":"))
+	targetIP := opts.TargetIP
+	if targetIP == "0.0.0.0" {
+		targetIP = ""
+	}
+	s.log.Debugw("Sending command via multicast/broadcast",
+		"targetIP", targetIP, "targetMAC", targetMAC)
+	s.log.Debugw("XML command", "xml", redactXML(xmlCmd))
 
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -275,7 +318,7 @@ func (s *Scanner) sendCommandBroadcastWithMAC(xmlCmd string, opts SendOptions) (
 
 	timeout := opts.Timeout
 	if timeout == 0 {
-		timeout = 5 * time.Second
+		timeout = DefaultTimeout
 	}
 
 	responseChan := make(chan string, 10)
@@ -337,13 +380,12 @@ func (s *Scanner) sendCommandBroadcastWithMAC(xmlCmd string, opts SendOptions) (
 					}
 
 					response := string(buf[:n])
-
-					if strings.Contains(strings.ToUpper(response), targetMAC) ||
-						strings.Contains(strings.ToUpper(response), strings.ReplaceAll(targetMAC, ":", "-")) {
-						select {
-						case responseChan <- response:
-						default:
-						}
+					if !responseMatches(response, targetMAC, targetIP) {
+						continue
+					}
+					select {
+					case responseChan <- response:
+					default:
 					}
 				}
 			}(ip, iface.Name, ipNet)
@@ -359,7 +401,31 @@ func (s *Scanner) sendCommandBroadcastWithMAC(xmlCmd string, opts SendOptions) (
 		return response, nil
 	}
 
-	return "", fmt.Errorf("no response from device with MAC %s (timeout)", opts.TargetMAC)
+	switch {
+	case targetMAC != "" && targetIP != "":
+		return "", fmt.Errorf("no response from device %s / %s (timeout)", targetIP, targetMAC)
+	case targetMAC != "":
+		return "", fmt.Errorf("no response from device with MAC %s (timeout)", targetMAC)
+	default:
+		return "", fmt.Errorf("no response from device at %s (timeout)", targetIP)
+	}
+}
+
+// responseMatches reports whether an SADP reply corresponds to the intended
+// target. When targetMAC is set it is authoritative (MAC survives IP changes
+// mid-command, e.g. "update"); otherwise the reply's advertised IPv4Address
+// must match targetIP. With neither set the caller has already refused to
+// send, so this returns false as a safety net.
+func responseMatches(response, targetMAC, targetIP string) bool {
+	if targetMAC != "" {
+		upper := strings.ToUpper(response)
+		return strings.Contains(upper, targetMAC) ||
+			strings.Contains(upper, strings.ReplaceAll(targetMAC, ":", "-"))
+	}
+	if targetIP != "" {
+		return strings.Contains(response, "<IPv4Address>"+targetIP+"</IPv4Address>")
+	}
+	return false
 }
 
 // ListCommands prints the list of available commands

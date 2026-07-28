@@ -211,6 +211,42 @@ func TestLoadWithEnvOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadInvalidEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		val  string
+	}{
+		{name: "invalid duration", key: "HTTP_TIMEOUT", val: "not-a-duration"},
+		{name: "invalid int", key: "DISCOVERY_WORKERS", val: "not-a-number"},
+		{name: "invalid bool", key: "DEBUG", val: "not-a-bool"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(tt.key, tt.val)
+			cfg, err := Load()
+			if err == nil {
+				t.Fatalf("Load() succeeded, want error")
+			}
+			if cfg != nil {
+				t.Errorf("Load() = %+v, want nil on error", cfg)
+			}
+		})
+	}
+}
+
+func TestLoadWithOptionsInvalidEnv(t *testing.T) {
+	t.Setenv("HTTP_TIMEOUT", "nonsense")
+	cfg, err := LoadWithOptions(env.Options{})
+	if err == nil {
+		t.Fatal("LoadWithOptions() succeeded, want error")
+	}
+	if cfg != nil {
+		t.Errorf("LoadWithOptions() = %+v, want nil on error", cfg)
+	}
+}
+
 func TestLoadWithOptions(t *testing.T) {
 	tests := []struct {
 		name          string
