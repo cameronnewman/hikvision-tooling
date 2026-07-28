@@ -1,6 +1,8 @@
 module github.com/cameronnewman/hikvision-tooling
 
-go 1.21
+go 1.26
+
+toolchain go1.26.5
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1

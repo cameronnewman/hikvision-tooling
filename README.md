@@ -165,7 +165,7 @@ DISCOVERY_WORKERS=50 SADP_TIMEOUT=10s sadp scan 192.168.1.0/24
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.26 or later
 - golangci-lint (for linting)
 
 ### Building

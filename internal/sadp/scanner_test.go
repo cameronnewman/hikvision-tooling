@@ -109,23 +109,23 @@ func TestToXML(t *testing.T) {
 	scanner := NewScanner(5*time.Second, log)
 
 	tests := []struct {
-		name           string
-		devices        []*Device
-		wantContains   []string
-		wantErr        bool
+		name         string
+		devices      []*Device
+		wantContains []string
+		wantErr      bool
 	}{
 		{
 			name: "multiple devices",
 			devices: []*Device{
 				{
-					Uuid:        "uuid-1",
+					UUID:        "uuid-1",
 					MAC:         "AA:BB:CC:DD:EE:FF",
 					IPv4Address: "192.168.1.100",
 					DeviceType:  "Camera",
 					Activated:   "true",
 				},
 				{
-					Uuid:        "uuid-2",
+					UUID:        "uuid-2",
 					MAC:         "11:22:33:44:55:66",
 					IPv4Address: "192.168.1.101",
 					DeviceType:  "NVR",
@@ -177,7 +177,7 @@ func TestToCSV(t *testing.T) {
 					DeviceType:        "Camera",
 					Activated:         "true",
 					CommandPort:       8000,
-					HttpPort:          80,
+					HTTPPort:          80,
 					SoftwareVersion:   "V5.5.0",
 					IPv4Gateway:       "192.168.1.1",
 					DeviceSN:          "SN123456",
@@ -309,7 +309,7 @@ func TestDeviceStruct(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			device := &Device{
-				Uuid:              tt.uuid,
+				UUID:              tt.uuid,
 				Types:             "inquiry",
 				DeviceType:        tt.deviceType,
 				DeviceDescription: tt.deviceDescription,
@@ -320,15 +320,15 @@ func TestDeviceStruct(t *testing.T) {
 				IPv4Gateway:       tt.ipv4Gateway,
 				DHCP:              tt.dhcp,
 				CommandPort:       tt.commandPort,
-				HttpPort:          tt.httpPort,
+				HTTPPort:          tt.httpPort,
 				SoftwareVersion:   tt.softwareVersion,
 				Activated:         tt.activated,
 				AnalogChannelNum:  tt.analogChannelNum,
 				DigitalChannelNum: tt.digitalChannelNum,
 			}
 
-			if device.Uuid != tt.uuid {
-				t.Error("Uuid not set correctly")
+			if device.UUID != tt.uuid {
+				t.Error("UUID not set correctly")
 			}
 			if device.MAC != tt.mac {
 				t.Error("MAC not set correctly")

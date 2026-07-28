@@ -276,18 +276,18 @@ func TestCommandsMap(t *testing.T) {
 
 func TestSendOptionsStruct(t *testing.T) {
 	tests := []struct {
-		name        string
-		targetIP    string
-		targetMAC   string
-		password    string
-		code        string
-		newIP       string
-		newMask     string
-		newGateway  string
-		newPort     int
-		dhcp        bool
-		email       string
-		timeout     time.Duration
+		name       string
+		targetIP   string
+		targetMAC  string
+		password   string
+		code       string
+		newIP      string
+		newMask    string
+		newGateway string
+		newPort    int
+		dhcp       bool
+		email      string
+		timeout    time.Duration
 	}{
 		{
 			name:       "full options",

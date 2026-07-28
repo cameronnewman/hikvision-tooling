@@ -1,3 +1,5 @@
+// Package crypto implements the Hikvision password-reset code algorithm
+// and the AES/XOR helpers it depends on.
 package crypto
 
 import (
@@ -21,11 +23,14 @@ func DecryptAES(data []byte, keyHex string) ([]byte, error) {
 
 	blockSize := block.BlockSize()
 
-	// Pad data to block size if necessary
+	// Pad data to block size if necessary. Copy into a new slice so we
+	// don't scribble past the caller's slice cap.
 	paddedData := data
 	if len(data)%blockSize != 0 {
 		padding := blockSize - (len(data) % blockSize)
-		paddedData = append(data, bytes.Repeat([]byte{0}, padding)...)
+		paddedData = make([]byte, 0, len(data)+padding)
+		paddedData = append(paddedData, data...)
+		paddedData = append(paddedData, bytes.Repeat([]byte{0}, padding)...)
 	}
 
 	// Decrypt using ECB mode (block by block)
@@ -57,11 +62,14 @@ func DecryptXOR(data []byte, keyHex string) ([]byte, error) {
 func GenerateResetCode(serial, date string) string {
 	seed := serial + date
 
-	// Stage 1: Calculate magic number
-	var magic uint64 = 0
+	// Stage 1: Calculate magic number.
+	// The two conversions below are provably safe: `i` is a non-negative
+	// string index and `char` is a rune in the Unicode range [0, 0x10FFFF],
+	// so neither can overflow uint64.
+	var magic uint64
 	for i, char := range seed {
-		pos := uint64(i + 1)
-		charVal := uint64(char)
+		pos := uint64(i + 1)    // #nosec G115 -- string index, always non-negative
+		charVal := uint64(char) // #nosec G115 -- rune, always in [0, 0x10FFFF]
 		magic += (pos * charVal) ^ pos
 	}
 

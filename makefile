@@ -70,6 +70,9 @@ mod: go-mod ## Run go mod tidy
 .PHONY: vet
 vet: go-vet ## Run go vet
 
+.PHONY: govulncheck
+govulncheck: go-govulncheck ## Run govulncheck security scanner
+
 .PHONY: clean
 clean: go-clean ## Remove build artifacts
 

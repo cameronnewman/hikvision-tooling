@@ -7,8 +7,8 @@
 
 # Docker settings
 DOCKER ?= docker
-GOLANG_BUILD_IMAGE ?= docker.io/library/golang:1.21-bullseye
-GOLANG_LINT_IMAGE := docker.io/golangci/golangci-lint:v1.61.0
+GOLANG_BUILD_IMAGE ?= docker.io/library/golang:1.26-bookworm
+GOLANG_LINT_IMAGE := docker.io/golangci/golangci-lint:v2.12.2
 
 # Environment: local, docker, or CI (default: CI runs in docker)
 ENVIRONMENT ?= CI
@@ -45,7 +45,7 @@ go-build: ## Build the binary for current platform
 
 ifeq ($(filter $(ENVIRONMENT),local docker),$(ENVIRONMENT))
 	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)
 else
 	@mkdir -p $(BUILD_DIR)
 	DOCKER_BUILDKIT=1 \
@@ -54,7 +54,7 @@ else
 	-w /usr/src/app \
 	--entrypoint=bash \
 	$(GOLANG_BUILD_IMAGE) \
-	-c "CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -buildvcs=false $(GOFLAGS) -ldflags '-s -w -X main.Version=$(VERSION) -X main.Commit=$(VERSION_HASH)' -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)"
+	-c "CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)"
 endif
 
 	@echo "$(shell date) - Completed 'go build': $(BUILD_DIR)/$(BINARY)"
@@ -77,7 +77,7 @@ ifeq ($(filter $(ENVIRONMENT),local docker),$(ENVIRONMENT))
 		output=$(BUILD_DIR)/$(BINARY)-$$os-$$arch; \
 		if [ "$$os" = "windows" ]; then output="$$output.exe"; fi; \
 		echo "Building $$os/$$arch..."; \
-		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch $(GO) build $(GOFLAGS) $(LDFLAGS) -o $$output $(MAIN_PATH); \
+		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch $(GO) build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $$output $(MAIN_PATH); \
 	done
 else
 	@mkdir -p $(BUILD_DIR)
@@ -93,7 +93,7 @@ else
 		output=$(BUILD_DIR)/$(BINARY)-$$os-$$arch; \
 		if [ "$$os" = "windows" ]; then output="$$output.exe"; fi; \
 		echo "Building $$os/$$arch..."; \
-		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch go build -buildvcs=false -ldflags "-s -w -X main.Version=$(VERSION) -X main.Commit=$(VERSION_HASH)" -o $$output $(MAIN_PATH); \
+		CGO_ENABLED=$(CGO_ENABLED) GOOS=$$os GOARCH=$$arch go build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $$output $(MAIN_PATH); \
 	done'
 endif
 
@@ -250,6 +250,27 @@ go-deps-verify: ## Verify dependencies
 	@echo "+++ $(shell date) - Verifying dependencies..."
 	$(GO) mod verify
 	@echo "$(shell date) - Completed verifying dependencies"
+
+## Security targets
+
+.PHONY: go-govulncheck
+go-govulncheck: ## Run govulncheck against all packages
+	@echo "+++ $(shell date) - Running 'govulncheck'"
+
+ifeq ($(filter $(ENVIRONMENT),local docker),$(ENVIRONMENT))
+	@command -v govulncheck >/dev/null 2>&1 || $(GO) install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
+else
+	DOCKER_BUILDKIT=1 \
+	$(DOCKER) run --rm \
+	-v $(PWD):/usr/src/app \
+	-w /usr/src/app \
+	--entrypoint "/bin/bash" \
+	$(GOLANG_BUILD_IMAGE) \
+	-c "go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
+endif
+
+	@echo "$(shell date) - Completed 'govulncheck'"
 
 ## Vet target
 

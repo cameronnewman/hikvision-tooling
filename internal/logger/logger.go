@@ -1,3 +1,4 @@
+// Package logger provides a thin wrapper around zap's sugared logger.
 package logger
 
 import (

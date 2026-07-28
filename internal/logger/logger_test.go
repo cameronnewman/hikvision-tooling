@@ -126,7 +126,7 @@ func TestSync(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			log := New(false)
 			err := log.Sync()
 			// Sync may return an error on some systems, but shouldn't panic
@@ -159,7 +159,7 @@ func TestLogMethods(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			log := NewNop()
 
 			// Test various log methods don't panic
