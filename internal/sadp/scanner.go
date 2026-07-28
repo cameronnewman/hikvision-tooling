@@ -65,12 +65,29 @@ type DeviceList struct {
 	Devices []Device `xml:"Device"`
 }
 
+// packetConn is the subset of *net.UDPConn used for SADP I/O, extracted so
+// tests can substitute an in-memory fake without hitting the network.
+type packetConn interface {
+	WriteToUDP(b []byte, addr *net.UDPAddr) (int, error)
+	ReadFromUDP(b []byte) (int, *net.UDPAddr, error)
+	SetReadDeadline(t time.Time) error
+	SetDeadline(t time.Time) error
+	Write(b []byte) (int, error)
+	Read(b []byte) (int, error)
+	Close() error
+}
+
 // Scanner handles SADP protocol discovery
 type Scanner struct {
 	timeout     time.Duration
 	log         *logger.Logger
 	devices     map[string]*Device
 	deviceMutex sync.RWMutex
+
+	interfaces func() ([]net.Interface, error)
+	addrsOf    func(net.Interface) ([]net.Addr, error)
+	listenUDP  func(network string, laddr *net.UDPAddr) (packetConn, error)
+	dialUDP    func(network string, laddr, raddr *net.UDPAddr) (packetConn, error)
 }
 
 // NewScanner creates a new SADP scanner
@@ -79,15 +96,31 @@ func NewScanner(timeout time.Duration, log *logger.Logger) *Scanner {
 		log = logger.NewNop()
 	}
 	return &Scanner{
-		timeout: timeout,
-		log:     log,
-		devices: make(map[string]*Device),
+		timeout:    timeout,
+		log:        log,
+		devices:    make(map[string]*Device),
+		interfaces: net.Interfaces,
+		addrsOf:    func(i net.Interface) ([]net.Addr, error) { return i.Addrs() },
+		listenUDP: func(network string, laddr *net.UDPAddr) (packetConn, error) {
+			c, err := net.ListenUDP(network, laddr)
+			if err != nil {
+				return nil, err
+			}
+			return c, nil
+		},
+		dialUDP: func(network string, laddr, raddr *net.UDPAddr) (packetConn, error) {
+			c, err := net.DialUDP(network, laddr, raddr)
+			if err != nil {
+				return nil, err
+			}
+			return c, nil
+		},
 	}
 }
 
 // Discover performs SADP multicast discovery
 func (s *Scanner) Discover() ([]*Device, error) {
-	interfaces, err := net.Interfaces()
+	interfaces, err := s.interfaces()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network interfaces: %w", err)
 	}
@@ -99,7 +132,7 @@ func (s *Scanner) Discover() ([]*Device, error) {
 			continue
 		}
 
-		addrs, err := iface.Addrs()
+		addrs, err := s.addrsOf(iface)
 		if err != nil {
 			continue
 		}
@@ -140,7 +173,7 @@ func (s *Scanner) discoverOnInterface(localIP net.IP, ifaceName string) {
 	s.log.Debugw("Scanning on interface", "interface", ifaceName, "ip", localIP.String())
 
 	localAddr := &net.UDPAddr{IP: localIP, Port: 0}
-	conn, err := net.ListenUDP("udp4", localAddr)
+	conn, err := s.listenUDP("udp4", localAddr)
 	if err != nil {
 		s.log.Debugw("Failed to bind", "ip", localIP.String(), "error", err)
 		return
@@ -156,8 +189,7 @@ func (s *Scanner) discoverOnInterface(localIP net.IP, ifaceName string) {
 	}
 
 	for _, probe := range probePackets {
-		_, err = conn.WriteToUDP([]byte(probe), multicastAddr)
-		if err != nil {
+		if _, err = conn.WriteToUDP([]byte(probe), multicastAddr); err != nil {
 			s.log.Debugw("Failed to send probe", "ip", localIP.String(), "error", err)
 		}
 	}
@@ -210,6 +242,10 @@ func (s *Scanner) parseResponse(data string) *Device {
 	return device
 }
 
+// xmlMarshalIndent is a package-level indirection so tests can force the
+// otherwise-unreachable marshal failure path in ToXML.
+var xmlMarshalIndent = xml.MarshalIndent
+
 // ToXML generates SADP-compatible XML output
 func (s *Scanner) ToXML(devices []*Device) (string, error) {
 	list := DeviceList{
@@ -221,7 +257,7 @@ func (s *Scanner) ToXML(devices []*Device) (string, error) {
 		list.Devices[i] = *dev
 	}
 
-	output, err := xml.MarshalIndent(list, "", "  ")
+	output, err := xmlMarshalIndent(list, "", "  ")
 	if err != nil {
 		return "", err
 	}
