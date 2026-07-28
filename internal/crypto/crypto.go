@@ -62,11 +62,14 @@ func DecryptXOR(data []byte, keyHex string) ([]byte, error) {
 func GenerateResetCode(serial, date string) string {
 	seed := serial + date
 
-	// Stage 1: Calculate magic number
+	// Stage 1: Calculate magic number.
+	// The two conversions below are provably safe: `i` is a non-negative
+	// string index and `char` is a rune in the Unicode range [0, 0x10FFFF],
+	// so neither can overflow uint64.
 	var magic uint64
 	for i, char := range seed {
-		pos := uint64(i + 1)
-		charVal := uint64(char)
+		pos := uint64(i + 1)    // #nosec G115 -- string index, always non-negative
+		charVal := uint64(char) // #nosec G115 -- rune, always in [0, 0x10FFFF]
 		magic += (pos * charVal) ^ pos
 	}
 

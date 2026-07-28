@@ -171,13 +171,20 @@ func IsHostAlive(ip string, timeout time.Duration) bool {
 
 // PingHost attempts to ping a host
 func PingHost(ip string, timeout time.Duration) bool {
+	// Guard against passing non-IP-literals into ping; net.ParseIP rejects
+	// anything containing shell metacharacters or flags, which keeps the
+	// subprocess arg strictly a literal address.
+	if net.ParseIP(ip) == nil {
+		return false
+	}
+
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
 	case "darwin", "linux":
-		cmd = exec.Command("ping", "-c", "1", "-W", "1", ip)
+		cmd = exec.Command("ping", "-c", "1", "-W", "1", ip) // #nosec G204 -- ip validated by net.ParseIP above
 	case "windows":
-		cmd = exec.Command("ping", "-n", "1", "-w", "1000", ip)
+		cmd = exec.Command("ping", "-n", "1", "-w", "1000", ip) // #nosec G204 -- ip validated by net.ParseIP above
 	default:
 		return false
 	}

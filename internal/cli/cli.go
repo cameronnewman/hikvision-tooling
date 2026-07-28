@@ -228,7 +228,7 @@ func DiscoverSADPCmd(args []string) error {
 	}
 
 	if *outputFile != "" && output != "" {
-		err := os.WriteFile(*outputFile, []byte(output), 0644)
+		err := os.WriteFile(*outputFile, []byte(output), 0600)
 		if err != nil {
 			return fmt.Errorf("error writing file: %w", err)
 		}
