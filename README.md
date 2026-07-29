@@ -43,6 +43,8 @@ info via Hikvision's ISAPI over HTTP Digest auth.
   addresses
 - **Combined Scanning**: Use both methods for comprehensive network discovery
 - **Device Probing**: Check device status and information
+- **ISAPI Device Info**: Fetch `/ISAPI/System/deviceInfo` over HTTP with
+  built-in RFC 2617 Digest authentication (no `curl --digest` needed)
 - **SADP Commands**: Send SADP protocol commands to devices
 - **Password Reset Code Generation**: Generate reset codes for devices with
   firmware < 5.3.0
@@ -208,6 +210,10 @@ Configure the tool using environment variables:
 | `HTTP_TIMEOUT` | 10s | HTTP request timeout |
 | `HIKVISION_USERNAME` | (empty) | ISAPI digest-auth username |
 | `HIKVISION_PASSWORD` | (empty) | ISAPI digest-auth password |
+| `USER_AGENT` | Chrome UA string | User-Agent header for HTTP probes |
+| `OUTPUT_DIR` | `data` | Directory used for generated output files |
+| `AES_KEY_HEX` | Hikvision default | AES key used by the reset-code generator |
+| `XOR_KEY_HEX` | Hikvision default | XOR key used by the reset-code generator |
 | `DEBUG` | false | Enable debug output |
 
 Example:
@@ -255,8 +261,9 @@ make check
 │   ├── cli/            # CLI commands and logic
 │   ├── config/         # Environment-based configuration
 │   ├── crypto/         # Password reset code generation
+│   ├── isapi/          # ISAPI client (DeviceInfo over digest auth)
 │   ├── logger/         # Structured logging (zap)
-│   ├── network/        # HTTP client, ARP table, CIDR utilities
+│   ├── network/        # HTTP client, digest transport, ARP, CIDR utils
 │   └── sadp/           # SADP protocol implementation
 ├── Makefile
 └── README.md
@@ -297,10 +304,6 @@ misuse of this tool.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Issues and pull requests are welcome. Before opening a PR, please run
+`make check` (formatting, `go vet`, linters, tests) and keep changes
+focused — smaller PRs land faster.
