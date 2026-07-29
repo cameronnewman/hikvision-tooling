@@ -242,10 +242,6 @@ func (s *Scanner) parseResponse(data string) *Device {
 	return device
 }
 
-// xmlMarshalIndent is a package-level indirection so tests can force the
-// otherwise-unreachable marshal failure path in ToXML.
-var xmlMarshalIndent = xml.MarshalIndent
-
 // ToXML generates SADP-compatible XML output
 func (s *Scanner) ToXML(devices []*Device) (string, error) {
 	list := DeviceList{
@@ -257,7 +253,7 @@ func (s *Scanner) ToXML(devices []*Device) (string, error) {
 		list.Devices[i] = *dev
 	}
 
-	output, err := xmlMarshalIndent(list, "", "  ")
+	output, err := xml.MarshalIndent(list, "", "  ")
 	if err != nil {
 		return "", err
 	}

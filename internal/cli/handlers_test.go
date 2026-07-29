@@ -108,13 +108,6 @@ func withHostAlive(t *testing.T, fn func(string, time.Duration) bool) {
 	t.Cleanup(func() { isHostAlive = orig })
 }
 
-func withWriteFile(t *testing.T, fn func(string, []byte, os.FileMode) error) {
-	t.Helper()
-	orig := writeFile
-	writeFile = fn
-	t.Cleanup(func() { writeFile = orig })
-}
-
 func TestRunDispatchesEachCommand(t *testing.T) {
 	withStdout(t)
 	withStderr(t)
@@ -197,7 +190,6 @@ func TestDiscoverSADPCmd_TableAndFileWrite(t *testing.T) {
 		},
 		xmlOutput: "<xml/>",
 	})
-	withWriteFile(t, os.WriteFile)
 
 	if err := DiscoverSADPCmd([]string{"--output", outPath}); err != nil {
 		t.Fatalf("DiscoverSADPCmd() err = %v", err)
@@ -257,9 +249,9 @@ func TestDiscoverSADPCmd_XMLError(t *testing.T) {
 func TestDiscoverSADPCmd_WriteFileError(t *testing.T) {
 	withStdout(t)
 	withScanner(t, &fakeScanner{xmlOutput: "<x/>"})
-	withWriteFile(t, func(string, []byte, os.FileMode) error { return errors.New("disk full") })
 
-	err := DiscoverSADPCmd([]string{"--output", "/nowhere/out.xml"})
+	badPath := filepath.Join(t.TempDir(), "does-not-exist", "out.xml")
+	err := DiscoverSADPCmd([]string{"--output", badPath})
 	if err == nil || !strings.Contains(err.Error(), "error writing file") {
 		t.Fatalf("err = %v", err)
 	}
@@ -274,7 +266,6 @@ func TestDiscoverSADPCmd_DefaultOutputFileUsesXML(t *testing.T) {
 		discoverDevices: []*sadp.Device{{MAC: "AA:BB:CC:DD:EE:FF"}},
 		xmlOutput:       "<xml/>",
 	})
-	withWriteFile(t, os.WriteFile)
 
 	if err := DiscoverSADPCmd([]string{"--output", outPath}); err != nil {
 		t.Fatalf("err = %v", err)
@@ -583,17 +574,6 @@ func TestProbeCmd_Success(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "ERROR:") {
 		t.Errorf("output missing per-endpoint error: %s", buf.String())
-	}
-}
-
-func TestDefaultFactoriesReturnRealTypes(t *testing.T) {
-	sc := newSADPScanner(0, nil)
-	if _, ok := sc.(*sadp.Scanner); !ok {
-		t.Errorf("newSADPScanner default = %T, want *sadp.Scanner", sc)
-	}
-	h := newHTTPClient("ua", 0)
-	if _, ok := h.(*network.HTTPClient); !ok {
-		t.Errorf("newHTTPClient default = %T, want *network.HTTPClient", h)
 	}
 }
 

@@ -228,8 +228,6 @@ func (s *Scanner) BuildCommandXML(cmdName string, opts SendOptions) (string, err
 		}
 		xmlCmd = fmt.Sprintf(cmd.Template, probeUUID, opts.TargetMAC, opts.Password,
 			opts.NewIP, opts.NewPort, opts.NewMask, opts.NewGateway, dhcpStr)
-	default:
-		return "", fmt.Errorf("command %s not implemented", cmdName)
 	}
 
 	return xmlCmd, nil

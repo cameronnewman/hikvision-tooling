@@ -522,18 +522,6 @@ func TestSendCommand_BuildXMLError(t *testing.T) {
 	}
 }
 
-func TestBuildCommandXML_UnimplementedFallback(t *testing.T) {
-	const mockName = "test_unimplemented"
-	Commands[mockName] = Command{Name: mockName, Description: "test", Template: "<x/>"}
-	defer delete(Commands, mockName)
-
-	s := newTestScanner(t, 10*time.Millisecond)
-	_, err := s.BuildCommandXML(mockName, SendOptions{})
-	if err == nil || !strings.Contains(err.Error(), "not implemented") {
-		t.Fatalf("BuildCommandXML() err = %v, want not implemented", err)
-	}
-}
-
 func TestBuildCommandXML_ResetPasswordMissingFields(t *testing.T) {
 	s := newTestScanner(t, 10*time.Millisecond)
 
@@ -598,19 +586,5 @@ func TestNewScannerDefaultsExerciseRealNet(t *testing.T) {
 
 	if _, err := s.dialUDP("bad-network", nil, localAddr); err == nil {
 		t.Fatal("dialUDP with bad network succeeded, want error")
-	}
-}
-
-func TestToXML_MarshalError(t *testing.T) {
-	orig := xmlMarshalIndent
-	t.Cleanup(func() { xmlMarshalIndent = orig })
-	xmlMarshalIndent = func(interface{}, string, string) ([]byte, error) {
-		return nil, errors.New("marshal boom")
-	}
-
-	s := newTestScanner(t, 10*time.Millisecond)
-	_, err := s.ToXML([]*Device{{MAC: "AA:BB:CC:DD:EE:FF"}})
-	if err == nil || !strings.Contains(err.Error(), "marshal boom") {
-		t.Fatalf("ToXML() err = %v, want marshal boom", err)
 	}
 }

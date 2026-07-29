@@ -46,7 +46,6 @@ var (
 	}
 	getARPTable = network.GetARPTable
 	isHostAlive = network.IsHostAlive
-	writeFile   = os.WriteFile
 )
 
 func out(a ...any) {
@@ -273,7 +272,7 @@ func DiscoverSADPCmd(args []string) error {
 	}
 
 	if *outputFile != "" && output != "" {
-		err := writeFile(*outputFile, []byte(output), 0600)
+		err := os.WriteFile(*outputFile, []byte(output), 0600)
 		if err != nil {
 			return fmt.Errorf("error writing file: %w", err)
 		}

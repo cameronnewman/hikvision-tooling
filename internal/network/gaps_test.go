@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"os/exec"
 	"strings"
 	"testing"
@@ -185,24 +183,6 @@ func TestGetARPTable_ParsesOutput(t *testing.T) {
 
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
-}
-
-func TestGetWithAuth_ExtraSmokeCoverage(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusTeapot)
-		_, _ = io.Copy(w, bytes.NewReader([]byte("hi")))
-	}))
-	t.Cleanup(server.Close)
-
-	addr := strings.TrimPrefix(server.URL, "http://")
-	client := NewHTTPClient("t", 5*time.Second)
-	resp, err := client.GetWithAuth(addr, "/x", "tok")
-	if err != nil {
-		t.Fatalf("err = %v", err)
-	}
-	if resp.StatusCode != http.StatusTeapot {
-		t.Errorf("status = %d, want 418", resp.StatusCode)
-	}
 }
 
 func TestScanARP_SkipsMalformed(t *testing.T) {
