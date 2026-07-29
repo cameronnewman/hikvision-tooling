@@ -80,6 +80,8 @@ func Run(args []string) error {
 		return SendCmd(args[1:])
 	case "reset":
 		return ResetCmd(args[1:])
+	case "isapi":
+		return ISAPICmd(args[1:])
 	case "help", "--help", "-h":
 		PrintUsage()
 		return nil
@@ -103,11 +105,14 @@ func PrintUsage() {
 	out("  probe <IP>         Check device info and status")
 	out("  send <IP> <cmd>    Send SADP XML command to a device (multicast/broadcast by default)")
 	out("  reset              Generate password reset code (firmware < 5.3.0)")
+	out("  isapi info <HOST>  Fetch device info via ISAPI (requires HIKVISION_USERNAME/PASSWORD)")
 	out("")
 	out("Environment Variables:")
 	out("  DISCOVERY_WORKERS   Number of concurrent workers (default: 100)")
 	out("  DISCOVERY_TIMEOUT   Per-host timeout (default: 1s)")
 	out("  SADP_TIMEOUT        SADP protocol timeout (default: 5s)")
+	out("  HIKVISION_USERNAME  ISAPI digest-auth username (default: empty)")
+	out("  HIKVISION_PASSWORD  ISAPI digest-auth password (default: empty)")
 	out("  DEBUG               Enable debug output (default: false)")
 	out("")
 	out("Examples:")
@@ -116,6 +121,7 @@ func PrintUsage() {
 	out("  sadp scan 192.168.1.0/24")
 	out("  sadp send 192.168.1.64 inquiry")
 	out("  sadp reset --serial ABC123 --date 20231215")
+	out("  sadp isapi info 192.168.1.64")
 	out("")
 	out("Run 'sadp <command> --help' for command options.")
 }

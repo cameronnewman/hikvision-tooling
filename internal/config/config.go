@@ -20,6 +20,10 @@ type Config struct {
 	// SADP settings
 	SADPTimeout time.Duration `env:"SADP_TIMEOUT" envDefault:"5s"`
 
+	// ISAPI credentials (for `sadp isapi` subcommands)
+	HikvisionUsername string `env:"HIKVISION_USERNAME" envDefault:""`
+	HikvisionPassword string `env:"HIKVISION_PASSWORD" envDefault:""`
+
 	// Output settings
 	OutputDir string `env:"OUTPUT_DIR" envDefault:"data"`
 	Debug     bool   `env:"DEBUG" envDefault:"false"`
@@ -50,14 +54,16 @@ func LoadWithOptions(opts env.Options) (*Config, error) {
 // DefaultConfig returns a Config with default values
 func DefaultConfig() *Config {
 	return &Config{
-		HTTPTimeout:      10 * time.Second,
-		UserAgent:        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-		DiscoveryWorkers: 100,
-		DiscoveryTimeout: 1 * time.Second,
-		SADPTimeout:      5 * time.Second,
-		OutputDir:        "data",
-		Debug:            false,
-		AESKeyHex:        "279977f62f6cfd2d91cd75b889ce0c9a",
-		XORKeyHex:        "738B5544",
+		HTTPTimeout:       10 * time.Second,
+		UserAgent:         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+		DiscoveryWorkers:  100,
+		DiscoveryTimeout:  1 * time.Second,
+		SADPTimeout:       5 * time.Second,
+		HikvisionUsername: "",
+		HikvisionPassword: "",
+		OutputDir:         "data",
+		Debug:             false,
+		AESKeyHex:         "279977f62f6cfd2d91cd75b889ce0c9a",
+		XORKeyHex:         "738B5544",
 	}
 }
