@@ -2,7 +2,7 @@ package network
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" // #nosec G501 -- MD5 is mandated by RFC 2617 for HTTP Digest auth
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -253,7 +253,7 @@ func computeResponse(username, password, realm, nonce, cnonce, nc, qop, algorith
 }
 
 func md5Hex(s string) string {
-	sum := md5.Sum([]byte(s))
+	sum := md5.Sum([]byte(s)) // #nosec G401 -- MD5 is mandated by RFC 2617
 	return hex.EncodeToString(sum[:])
 }
 

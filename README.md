@@ -124,7 +124,8 @@ Digest authentication. Returns model, serial, firmware, MAC, and related
 metadata.
 
 ```bash
-sadp isapi info <HOST> [--username USER] [--password PASS] [--insecure] [--timeout DURATION] [--json]
+sadp isapi info <HOST> [--username USER] [--password PASS] \
+                       [--insecure] [--timeout DURATION] [--json]
 ```
 
 The `<HOST>` may be `192.168.1.64`, `http://192.168.1.64`,

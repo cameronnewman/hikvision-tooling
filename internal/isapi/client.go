@@ -58,7 +58,8 @@ type Options struct {
 // fresh *http.Transport carrying the requested TLS settings.
 func New(baseURL string, opts Options) *Client {
 	base := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify}, //nolint:gosec // opt-in via Options
+		// #nosec G402 -- InsecureSkipVerify is opt-in via Options.InsecureSkipVerify
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify},
 	}
 	return &Client{
 		BaseURL: strings.TrimRight(baseURL, "/"),
