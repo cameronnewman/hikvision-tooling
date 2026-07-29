@@ -1,0 +1,4 @@
+workspaces:
+  sadp:
+    display_name: hikvision-tooling
+    strip_prefix: github.com/cameronnewman/hikvision-tooling/

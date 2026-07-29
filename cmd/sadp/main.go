@@ -3,14 +3,20 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/cameronnewman/hikvision-tooling/internal/cli"
 )
 
 func main() {
-	if err := cli.Run(os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+	os.Exit(mainRun(os.Args[1:], os.Stderr))
+}
+
+func mainRun(args []string, stderr io.Writer) int {
+	if err := cli.Run(args); err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+		return 1
 	}
+	return 0
 }

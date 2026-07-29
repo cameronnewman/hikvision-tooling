@@ -18,6 +18,10 @@ type HTTPClient struct {
 	Timeout   time.Duration
 }
 
+// dialTimeout is a package-level indirection so tests can substitute a fake
+// dialer that returns a net.Conn whose Write fails on demand.
+var dialTimeout = net.DialTimeout
+
 // NewHTTPClient creates a new HTTP client
 func NewHTTPClient(userAgent string, timeout time.Duration) *HTTPClient {
 	return &HTTPClient{
@@ -55,7 +59,7 @@ func (c *HTTPClient) GetWithAuth(ipAddress, path, authToken string) (*HTTPRespon
 		port = "80"
 	}
 
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(parsedURL.Hostname(), port), c.Timeout)
+	conn, err := dialTimeout("tcp", net.JoinHostPort(parsedURL.Hostname(), port), c.Timeout)
 	if err != nil {
 		var netErr net.Error
 		if errors.As(err, &netErr) && netErr.Timeout() {
@@ -106,10 +110,6 @@ func parseHTTPResponse(data []byte) (*HTTPResponse, error) {
 	body := data[headerEnd+4:]
 
 	lines := strings.Split(string(headerBytes), "\r\n")
-	if len(lines) == 0 {
-		return nil, fmt.Errorf("invalid HTTP response: no status line")
-	}
-
 	statusParts := strings.SplitN(lines[0], " ", 3)
 	if len(statusParts) < 2 {
 		return nil, fmt.Errorf("invalid HTTP status line: %s", lines[0])

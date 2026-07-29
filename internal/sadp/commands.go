@@ -25,9 +25,6 @@ func redactXML(xml string) string {
 	return sensitiveXMLTags.ReplaceAllStringFunc(xml, func(m string) string {
 		openEnd := strings.Index(m, ">")
 		closeStart := strings.LastIndex(m, "<")
-		if openEnd < 0 || closeStart <= openEnd {
-			return m
-		}
 		return m[:openEnd+1] + "***" + m[closeStart:]
 	})
 }
@@ -231,8 +228,6 @@ func (s *Scanner) BuildCommandXML(cmdName string, opts SendOptions) (string, err
 		}
 		xmlCmd = fmt.Sprintf(cmd.Template, probeUUID, opts.TargetMAC, opts.Password,
 			opts.NewIP, opts.NewPort, opts.NewMask, opts.NewGateway, dhcpStr)
-	default:
-		return "", fmt.Errorf("command %s not implemented", cmdName)
 	}
 
 	return xmlCmd, nil
@@ -269,7 +264,7 @@ func (s *Scanner) sendCommandUnicast(xmlCmd string, opts SendOptions) (string, e
 	s.log.Debugw("Sending command (unicast)", "target", opts.TargetIP, "port", Port)
 	s.log.Debugw("XML command", "xml", redactXML(xmlCmd))
 
-	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+	conn, err := s.dialUDP("udp4", nil, &net.UDPAddr{
 		IP:   net.ParseIP(opts.TargetIP),
 		Port: Port,
 	})
@@ -311,7 +306,7 @@ func (s *Scanner) sendCommandBroadcast(xmlCmd string, opts SendOptions) (string,
 		"targetIP", targetIP, "targetMAC", targetMAC)
 	s.log.Debugw("XML command", "xml", redactXML(xmlCmd))
 
-	interfaces, err := net.Interfaces()
+	interfaces, err := s.interfaces()
 	if err != nil {
 		return "", fmt.Errorf("failed to get network interfaces: %w", err)
 	}
@@ -329,7 +324,7 @@ func (s *Scanner) sendCommandBroadcast(xmlCmd string, opts SendOptions) (string,
 			continue
 		}
 
-		addrs, err := iface.Addrs()
+		addrs, err := s.addrsOf(iface)
 		if err != nil {
 			continue
 		}
@@ -351,7 +346,7 @@ func (s *Scanner) sendCommandBroadcast(xmlCmd string, opts SendOptions) (string,
 
 				s.log.Debugw("Sending on interface", "interface", ifaceName, "ip", localIP.String())
 
-				conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: localIP, Port: 0})
+				conn, err := s.listenUDP("udp4", &net.UDPAddr{IP: localIP, Port: 0})
 				if err != nil {
 					return
 				}

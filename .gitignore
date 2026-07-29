@@ -15,6 +15,7 @@
 # Code coverage profiles and other test artifacts
 *.out
 coverage.*
+!coverage.yaml
 *.coverprofile
 profile.cov
 
