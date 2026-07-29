@@ -1,0 +1,10 @@
+name: "CodeQL config"
+
+# HTTP Digest Access Authentication (RFC 2617) requires MD5 by protocol
+# specification. The `go/weak-sensitive-data-hashing` query flags any MD5
+# call that touches password-like data, which is unavoidable in a digest
+# implementation. Suppress project-wide; the only MD5 use in this repo
+# is internal/network/digest.go for exactly this purpose.
+query-filters:
+  - exclude:
+      id: go/weak-sensitive-data-hashing

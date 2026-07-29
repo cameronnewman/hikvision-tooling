@@ -32,6 +32,9 @@ This project provides a **cross-platform alternative** that runs natively on:
 - **Linux** (amd64 and arm64)
 - **Windows** (amd64)
 
+Once devices are discovered, `sadp isapi info` pulls structured device
+info via Hikvision's ISAPI over HTTP Digest auth.
+
 ## Features
 
 - **SADP Discovery**: Discover Hikvision devices using the official SADP
@@ -114,6 +117,35 @@ Check device status and information:
 sadp probe 192.168.1.64
 ```
 
+#### `isapi info` - Device Information via ISAPI
+
+Fetch `/ISAPI/System/deviceInfo` from a Hikvision device using HTTP
+Digest authentication. Returns model, serial, firmware, MAC, and related
+metadata.
+
+```bash
+sadp isapi info <HOST> [--username USER] [--password PASS] \
+                       [--insecure] [--timeout DURATION] [--json]
+```
+
+The `<HOST>` may be `192.168.1.64`, `http://192.168.1.64`,
+`https://192.168.1.64:8443`, or a plain hostname. Scheme defaults to
+`http`; port defaults to the scheme default (80/443).
+
+Credentials come from `HIKVISION_USERNAME` / `HIKVISION_PASSWORD`
+(recommended) or the `--username` / `--password` flags. Flags leak into
+shell history — prefer the env vars.
+
+Use `--insecure` to skip TLS verification for self-signed HTTPS. Use
+`--json` for machine-readable output. Exit codes: `0` success, `2` auth
+failure, `3` network/timeout, `1` other.
+
+Example:
+
+```bash
+HIKVISION_USERNAME=admin HIKVISION_PASSWORD=xxxxx sadp isapi info 192.168.1.64
+```
+
 #### `send` - SADP Commands
 
 Send SADP protocol commands to devices:
@@ -174,6 +206,8 @@ Configure the tool using environment variables:
 | `DISCOVERY_TIMEOUT` | 1s | Per-host timeout for discovery |
 | `SADP_TIMEOUT` | 5s | SADP protocol timeout |
 | `HTTP_TIMEOUT` | 10s | HTTP request timeout |
+| `HIKVISION_USERNAME` | (empty) | ISAPI digest-auth username |
+| `HIKVISION_PASSWORD` | (empty) | ISAPI digest-auth password |
 | `DEBUG` | false | Enable debug output |
 
 Example:
