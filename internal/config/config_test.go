@@ -18,8 +18,6 @@ func TestLoad(t *testing.T) {
 		wantDebug          bool
 		wantAESKeyHex      string
 		wantXORKeyHex      string
-		wantHikUser        string
-		wantHikPass        string
 		wantUserAgentEmpty bool
 	}{
 		{
@@ -32,8 +30,6 @@ func TestLoad(t *testing.T) {
 			wantDebug:          false,
 			wantAESKeyHex:      "279977f62f6cfd2d91cd75b889ce0c9a",
 			wantXORKeyHex:      "738B5544",
-			wantHikUser:        "",
-			wantHikPass:        "",
 			wantUserAgentEmpty: false,
 		},
 	}
@@ -81,14 +77,6 @@ func TestLoad(t *testing.T) {
 				t.Errorf("XORKeyHex = %s, want %s", cfg.XORKeyHex, tt.wantXORKeyHex)
 			}
 
-			if cfg.HikvisionUsername != tt.wantHikUser {
-				t.Errorf("HikvisionUsername = %q, want %q", cfg.HikvisionUsername, tt.wantHikUser)
-			}
-
-			if cfg.HikvisionPassword != tt.wantHikPass {
-				t.Errorf("HikvisionPassword = %q, want %q", cfg.HikvisionPassword, tt.wantHikPass)
-			}
-
 			if tt.wantUserAgentEmpty && cfg.UserAgent != "" {
 				t.Errorf("UserAgent = %s, want empty", cfg.UserAgent)
 			}
@@ -110,8 +98,6 @@ func TestDefaultConfig(t *testing.T) {
 		wantDebug          bool
 		wantAESKeyHex      string
 		wantXORKeyHex      string
-		wantHikUser        string
-		wantHikPass        string
 		wantUserAgentEmpty bool
 	}{
 		{
@@ -124,8 +110,6 @@ func TestDefaultConfig(t *testing.T) {
 			wantDebug:          false,
 			wantAESKeyHex:      "279977f62f6cfd2d91cd75b889ce0c9a",
 			wantXORKeyHex:      "738B5544",
-			wantHikUser:        "",
-			wantHikPass:        "",
 			wantUserAgentEmpty: false,
 		},
 	}
@@ -168,14 +152,6 @@ func TestDefaultConfig(t *testing.T) {
 
 			if cfg.XORKeyHex != tt.wantXORKeyHex {
 				t.Errorf("XORKeyHex = %s, want %s", cfg.XORKeyHex, tt.wantXORKeyHex)
-			}
-
-			if cfg.HikvisionUsername != tt.wantHikUser {
-				t.Errorf("HikvisionUsername = %q, want %q", cfg.HikvisionUsername, tt.wantHikUser)
-			}
-
-			if cfg.HikvisionPassword != tt.wantHikPass {
-				t.Errorf("HikvisionPassword = %q, want %q", cfg.HikvisionPassword, tt.wantHikPass)
 			}
 
 			if tt.wantUserAgentEmpty && cfg.UserAgent != "" {
