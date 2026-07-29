@@ -39,6 +39,45 @@ jobs:
           files: coverage/coverage.out
           fail_ci_if_error: false
 
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Install reporters
+        run: |
+          go install gotest.tools/gotestsum@latest
+          go install github.com/boumenot/gocover-cobertura@latest
+
+      - name: Run tests with coverage
+        run: |
+          mkdir -p cov
+          gotestsum --junitfile cov/tests-sadp.xml --format pkgname \
+            -- -coverprofile=coverage.out -covermode=atomic ./...
+          gocover-cobertura < coverage.out > cov/coverage-sadp.xml
+
+      - name: Aggregate coverage summary
+        # Pinned to reviewed commit SHA per upstream guidance; bump after review.
+        uses: aanantaco/coverage@ab3d55e91fd6563135cad00e2335520c8e0360cf
+        with:
+          input: ./cov
+          output: $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-xml
+          path: cov/
+          retention-days: 7
+
   security:
     name: Security
     runs-on: ubuntu-latest
