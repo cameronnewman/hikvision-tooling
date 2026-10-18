@@ -54,7 +54,7 @@ else
 	-w /usr/src/app \
 	--entrypoint=bash \
 	$(GOLANG_BUILD_IMAGE) \
-	-c "CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)"
+	-c 'CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(MAIN_PATH)'
 endif
 
 	@echo "$(shell date) - Completed 'go build': $(BUILD_DIR)/$(BINARY)"

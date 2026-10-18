@@ -116,6 +116,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      - name: Build binary for current platform
+        run: |
+          make build
+          ./bin/sadp --help
+          rm bin/sadp
+
       - name: Build release binaries
         run: make release
 
