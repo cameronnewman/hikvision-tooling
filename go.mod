@@ -1,11 +1,11 @@
 module github.com/cameronnewman/hikvision-tooling
 
-go 1.26
+go 1.26.0
 
 toolchain go1.26.5
 
 require (
-	github.com/caarlos0/env/v11 v11.4.1
+	github.com/caarlos0/env/v11 v11.4.2
 	github.com/google/uuid v1.6.0
 	go.uber.org/zap v1.28.0
 )
